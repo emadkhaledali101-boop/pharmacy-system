@@ -4,135 +4,424 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>نظام إدارة الأدوية</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
+  :root {
+    --ink: #13231f;
+    --ink-2: #33463f;
+    --muted: #62736d;
+    --line: #dce4e0;
+    --line-2: #ebf0ed;
+    --bg: #f1f4f3;
+    --surface: #ffffff;
+    --pine: #0e3b31;
+    --pine-2: #0a2b24;
+    --brand: #12825a;
+    --brand-d: #0d6b4a;
+    --brand-soft: #e4f3ec;
+    --brand-ring: rgba(18, 130, 90, .18);
+    --amber-bar: #f0b04a;
+    --green: #12825a;
+    --green-soft: #e4f3ec;
+    --red: #c4342b;
+    --red-soft: #fdecea;
+    --amber: #a35f0a;
+    --amber-soft: #fff1d3;
+    --purple: #6d4bd1;
+    --orange: #d9730d;
+    --r: 12px;
+    --sh-1: 0 1px 2px rgba(14, 40, 33, .06);
+    --sh-2: 0 1px 3px rgba(14, 40, 33, .06), 0 10px 28px rgba(14, 40, 33, .07);
+    --sh-3: 0 24px 60px rgba(6, 24, 19, .35);
+    --side: 256px;
+    --mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='11' fill='%231fa36f'/%3E%3Cpath d='M20 11v18M11 20h18' stroke='white' stroke-width='4.5' stroke-linecap='round'/%3E%3C/svg%3E");
+    --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2362736d' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
+
   body {
-    font-family: -apple-system, "Segoe UI", Tahoma, sans-serif;
-    background: #f0f2f5; color: #1a1a1a; padding: 12px;
-    min-height: 100vh; font-weight: 700;
+    font-family: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+    background: var(--bg); color: var(--ink);
+    min-height: 100vh; font-weight: 500; line-height: 1.6;
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
   }
-  header { background: #1a73e8; color: #fff; padding: 16px; border-radius: 12px; margin-bottom: 12px; text-align: center; }
-  header h1 { font-size: 20px; margin-bottom: 4px; font-weight: 900; }
-  header p { font-size: 12px; opacity: .9; font-weight: 700; }
-  nav { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 12px; }
+
+  /* ───── هيكل الصفحة ───── */
+  #appWrap { padding: 24px 32px 48px; padding-right: calc(var(--side) + 32px); }
+  #appWrap > :not(nav) { max-width: 1180px; margin-left: auto; margin-right: auto; }
+
+  /* ───── القائمة الجانبية ───── */
+  nav {
+    position: fixed; top: 0; right: 0; bottom: 0; width: var(--side); z-index: 30;
+    background: linear-gradient(180deg, var(--pine) 0%, var(--pine-2) 100%);
+    padding: 24px 14px; display: flex; flex-direction: column; gap: 3px; overflow-y: auto;
+  }
+  nav::before {
+    content: "نظام إدارة الأدوية"; display: block; color: #fff; font-weight: 700; font-size: 16px;
+    line-height: 42px; padding-right: 54px; margin: 0 6px 24px;
+    background: var(--mark) no-repeat right center / 42px 42px;
+  }
   nav button {
-    padding: 10px 4px; border: none; background: #fff; border-radius: 8px;
-    font-size: 12px; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,.08);
-    transition: .15s; font-weight: 700;
+    display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 14px;
+    border: none; background: transparent; color: #a7c1b8; font: inherit; font-size: 14px;
+    font-weight: 600; border-radius: 10px; cursor: pointer; text-align: right;
+    position: relative; transition: background .15s, color .15s;
   }
-  nav button.active { background: #1a73e8; color: #fff; }
-  .panel { display: none; } .panel.active { display: block; }
-  .card { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
-  .card h2 { font-size: 16px; margin-bottom: 12px; color: #1a73e8; font-weight: 900; }
-  label { display: block; margin-top: 10px; margin-bottom: 4px; font-size: 13px; font-weight: 800; }
-  input, select {
-    width: 100%; padding: 10px; border: 1px solid #d0d5dd; border-radius: 8px;
-    font-size: 14px; background: #fff; font-weight: 700;
+  nav button svg { width: 19px; height: 19px; flex: none; }
+  nav button:hover { background: rgba(255, 255, 255, .07); color: #fff; }
+  nav button.active { background: rgba(240, 176, 74, .14); color: #f7cd7a; }
+  nav button.active::before {
+    content: ""; position: absolute; right: -14px; top: 9px; bottom: 9px; width: 4px;
+    border-radius: 4px 0 0 4px; background: var(--amber-bar);
   }
-  input:focus, select:focus { outline: none; border-color: #1a73e8; }
-  button.btn {
-    width: 100%; padding: 12px; margin-top: 12px; border: none; border-radius: 8px;
-    font-size: 15px; font-weight: 900; color: #fff; background: #1a73e8; cursor: pointer;
-  }
-  button.btn.green { background: #0f9d58; } button.btn.red { background: #d93025; }
-  button.btn.gray { background: #5f6368; } button.btn.orange { background: #f57c00; }
-  button.btn.purple { background: #8e24aa; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
-  th, td { padding: 8px 6px; text-align: right; border-bottom: 1px solid #eee; font-weight: 700; }
-  th { background: #f8f9fa; font-weight: 900; color: #5f6368; font-size: 12px; }
-  .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 800; }
-  .badge.ok { background: #e6f4ea; color: #0f9d58; }
-  .badge.low { background: #fef7e0; color: #b06000; }
-  .badge.out { background: #fce8e6; color: #d93025; }
-  .badge.in { background: #e6f4ea; color: #0f9d58; }
-  .badge.exit { background: #fce8e6; color: #d93025; }
-  .badge.warn { background: #fef7e0; color: #b06000; }
-  .badge.expired { background: #d93025; color: #fff; font-weight: 900; }
-  .msg { padding: 10px; border-radius: 8px; margin-top: 10px; font-size: 13px; display: none; font-weight: 700; }
-  .msg.show { display: block; }
-  .msg.ok { background: #e6f4ea; color: #0f9d58; }
-  .msg.err { background: #fce8e6; color: #d93025; }
-  .row { display: flex; gap: 8px; } .row > * { flex: 1; }
-  .empty { text-align: center; padding: 24px; color: #80868b; font-size: 13px; font-weight: 700; }
-  .scroll-x { overflow-x: auto; }
-  .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
-  .stat { background: #fff; border-radius: 10px; padding: 12px 6px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
-  .stat .num { font-size: 20px; font-weight: 900; color: #1a73e8; }
-  .stat .lbl { font-size: 10px; color: #5f6368; margin-top: 2px; font-weight: 700; }
-  .stat.warn .num { color: #b06000; }
-  .stat.danger .num { color: #d93025; }
-  .stat.exp .num { color: #8e24aa; }
-  .icon-btn { padding: 4px 8px; margin: 0 2px; width: auto; font-size: 12px; border-radius: 6px; border: none; color: #fff; cursor: pointer; font-weight: 800; }
-  .icon-btn.edit { background: #1a73e8; } .icon-btn.del { background: #d93025; }
-  .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 100; padding: 16px; overflow-y: auto; }
-  .modal-bg.show { display: block; }
-  .modal { background: #fff; border-radius: 12px; padding: 16px; max-width: 500px; margin: 40px auto; }
-  .modal h2 { color: #1a73e8; margin-bottom: 12px; font-size: 18px; font-weight: 900; }
-  .batch-item { border: 1px solid #eee; border-radius: 8px; padding: 12px; margin-bottom: 10px; }
-  .batch-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-  .batch-num { font-size: 20px; font-weight: 900; color: #1a73e8; }
-  .alert-banner {
-    background: #fef7e0; border-right: 4px solid #b06000;
-    padding: 10px 12px; border-radius: 8px; margin-bottom: 8px;
-    font-size: 13px; color: #7a4500; font-weight: 700;
-  }
-  .alert-banner.danger {
-    background: #fce8e6; border-right-color: #d93025; color: #8b1a12;
-    font-weight: 900;
-  }
-  .alert-banner.critical {
-    background: #d93025; border-right-color: #8b0000; color: #fff;
-    font-weight: 900; animation: pulse 2s infinite;
-  }
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: .85; }
-  }
-  .alert-banner strong { display: block; margin-bottom: 2px; font-weight: 900; }
-  .hint { font-size: 11px; color: #80868b; margin-top: 2px; font-weight: 700; }
-  .quick-date { display: flex; gap: 4px; margin-top: 4px; }
-  .quick-date button {
-    flex: 1; padding: 6px 4px; font-size: 11px; border: 1px solid #d0d5dd;
-    background: #fff; border-radius: 6px; cursor: pointer; color: #5f6368; font-weight: 700;
-  }
-  .search-bar { position: relative; } .search-bar input { padding-left: 36px; }
-  .search-bar::before {
-    content: "🔍"; position: absolute; left: 12px; top: 50%;
-    transform: translateY(-50%); font-size: 14px; pointer-events: none;
-  }
-  #loginScreen { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 16px; }
-  #loginScreen .card { max-width: 400px; width: 100%; }
-  #loginScreen h1 { text-align: center; margin-bottom: 20px; color: #1a73e8; font-size: 24px; font-weight: 900; }
-  #appWrap { display: none; }
-  .loading { text-align: center; padding: 40px; color: #5f6368; font-size: 14px; }
-  .spinner {
-    display: inline-block; width: 30px; height: 30px;
-    border: 3px solid #e8f0fe; border-top-color: #1a73e8;
-    border-radius: 50%; animation: spin 1s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ───── شريط المستخدم والهيدر ───── */
   .user-bar {
     display: flex; justify-content: space-between; align-items: center;
-    background: #fff; padding: 8px 12px; border-radius: 8px;
-    margin-bottom: 12px; font-size: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.08);
-    font-weight: 700;
+    background: var(--surface); padding: 10px 16px; border-radius: var(--r);
+    margin-bottom: 20px; font-size: 13px; border: 1px solid var(--line);
+    box-shadow: var(--sh-1); font-weight: 600; color: var(--ink-2);
   }
   .user-bar button {
-    padding: 6px 12px; font-size: 11px; background: #fce8e6; color: #d93025;
-    border: none; border-radius: 6px; cursor: pointer; width: auto; font-weight: 800;
+    padding: 6px 14px; font-size: 12.5px; background: transparent; color: var(--red);
+    border: 1px solid #efc6c2; border-radius: 9px; cursor: pointer; width: auto;
+    font-weight: 600; font-family: inherit; transition: .15s;
   }
-  .section-title {
-    font-size: 14px; font-weight: 900; color: #1a73e8;
-    margin: 16px 0 8px; padding-bottom: 4px; border-bottom: 2px solid #e8f0fe;
+  .user-bar button:hover { background: var(--red); color: #fff; border-color: var(--red); }
+
+  header {
+    display: none; background: linear-gradient(135deg, var(--pine) 0%, #14503f 100%);
+    color: #fff; padding: 16px; border-radius: var(--r); margin-bottom: 12px; text-align: center;
   }
-  .btn-row { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+  header h1 { font-size: 18px; font-weight: 700; }
+  header p { font-size: 12px; opacity: .8; font-weight: 500; }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ───── الكروت ───── */
+  .card {
+    background: var(--surface); border-radius: 14px; padding: 22px;
+    margin-bottom: 18px; border: 1px solid var(--line); box-shadow: var(--sh-1);
+  }
+  .card h2 {
+    font-size: 16.5px; margin-bottom: 16px; color: var(--ink); font-weight: 700;
+  }
+  .card h2::before {
+    content: ""; display: inline-block; width: 4px; height: 16px; border-radius: 2px;
+    background: var(--brand); margin-left: 10px; vertical-align: -2px;
+  }
+  .card.danger-zone { border-color: #efc6c2; }
+  .card.danger-zone h2::before { background: var(--red); }
+
+  /* ───── الفورم ───── */
+  label { display: block; margin-top: 14px; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+  input, select {
+    width: 100%; padding: 11px 14px; min-height: 44px; border: 1px solid #cfd9d4; border-radius: 10px;
+    font-size: 14px; background: #fff; font-weight: 500; font-family: inherit;
+    color: var(--ink); transition: border-color .15s, box-shadow .15s;
+  }
+  input::placeholder { color: #9aa9a2; font-weight: 400; }
+  input:hover, select:hover { border-color: #aebdb6; }
+  input:focus, select:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-ring); }
+  input:disabled { background: #f1f4f3; color: var(--muted); }
+  select {
+    appearance: none; -webkit-appearance: none; cursor: pointer;
+    background: #fff var(--chev) no-repeat left 12px center / 16px; padding-left: 38px;
+  }
+  input[type="date"], input[type="time"] { cursor: pointer; text-align: right; }
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="time"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: .6; }
+  input[type="file"] { padding: 9px 12px; cursor: pointer; }
+  input[type="checkbox"] { width: 18px; height: 18px; min-height: 0; padding: 0; accent-color: var(--brand); cursor: pointer; }
+
+  button.btn {
+    width: 100%; padding: 12px; min-height: 46px; margin-top: 16px; border: none; border-radius: 11px;
+    font-size: 15px; font-weight: 700; color: #fff; background: var(--brand);
+    cursor: pointer; font-family: inherit; transition: filter .15s, transform .15s;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16), 0 4px 10px rgba(14, 60, 46, .18);
+  }
+  button.btn:hover { filter: brightness(1.07); }
+  button.btn:active { transform: translateY(1px); filter: brightness(.95); }
+  button.btn.green  { background: var(--brand); }
+  button.btn.red    { background: var(--red); }
+  button.btn.gray   { background: #55655f; }
+  button.btn.orange { background: var(--orange); }
+  button.btn.purple { background: var(--purple); }
+
+  button:focus-visible { outline: 3px solid var(--brand-ring); outline-offset: 2px; }
+  nav button:focus-visible { outline-color: rgba(240, 176, 74, .5); }
+
+  .row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .row > * { flex: 1; min-width: 130px; }
+
+  .quick-date { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .quick-date button {
+    flex: 1; padding: 6px 8px; font-size: 12.5px; border: 1px solid var(--line);
+    background: #f7faf8; border-radius: 8px; cursor: pointer; color: var(--muted);
+    font-weight: 600; font-family: inherit; transition: .15s;
+  }
+  .quick-date button:hover { background: var(--brand-soft); color: var(--brand-d); border-color: #a9d6c2; }
+
+  .hint { font-size: 12.5px; color: var(--muted); margin-top: 6px; font-weight: 500; }
+
+  .search-bar { position: relative; }
+  .search-bar input { padding-left: 40px; background: #f7faf8; }
+  .search-bar::before {
+    content: ""; position: absolute; left: 14px; top: 50%; width: 16px; height: 16px;
+    transform: translateY(-50%); pointer-events: none;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2362736d' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") no-repeat center / contain;
+  }
+
+  /* ───── الجداول ───── */
+  .scroll-x { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; margin-top: 14px; -webkit-overflow-scrolling: touch; }
+  table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13.5px; }
+  th {
+    background: #f4f7f5; color: var(--muted); font-weight: 700; font-size: 12.5px;
+    padding: 12px 16px; border-bottom: 1px solid var(--line); text-align: start; white-space: nowrap;
+    position: sticky; top: 0;
+  }
+  td {
+    padding: 12px 16px; border-bottom: 1px solid var(--line-2); text-align: start;
+    white-space: nowrap; color: var(--ink-2); font-weight: 500;
+  }
+  td:first-child { color: var(--ink); font-weight: 600; }
+  tbody tr { transition: background .12s; }
+  tbody tr:hover td { background: #f6faf8; }
+  tbody tr:last-child td { border-bottom: none; }
+
+  .empty { text-align: center; padding: 32px 16px; color: var(--muted); font-size: 14px; font-weight: 500; }
+
+  /* ───── الشارات ───── */
+  .badge { display: inline-flex; align-items: center; padding: 3px 11px; border-radius: 999px; font-size: 12.5px; font-weight: 600; }
+  .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-left: 7px; }
+  .badge.ok    { background: var(--green-soft); color: var(--green); }
+  .badge.low   { background: var(--amber-soft); color: var(--amber); }
+  .badge.out   { background: var(--red-soft); color: var(--red); }
+  .badge.in    { background: var(--green-soft); color: var(--green); }
+  .badge.exit  { background: var(--red-soft); color: var(--red); }
+  .badge.warn  { background: var(--amber-soft); color: var(--amber); }
+  .badge.expired { background: var(--red); color: #fff; font-weight: 700; }
+
+  /* ───── الرسائل ───── */
+  .msg { padding: 11px 14px; border-radius: 10px; margin-top: 14px; font-size: 14px; display: none; font-weight: 600; }
+  .msg.show { display: block; }
+  .msg.ok  { background: var(--green-soft); color: var(--brand-d); border: 1px solid #b9dfcd; }
+  .msg.err { background: var(--red-soft); color: var(--red); border: 1px solid #f1c3bf; }
+
+  /* ───── شريط الإحصائيات ───── */
+  .stat-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); margin-bottom: 18px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+    overflow: hidden; box-shadow: var(--sh-1);
+  }
+  .stat { padding: 20px 24px; text-align: start; background: transparent; }
+  .stat + .stat { border-inline-start: 1px solid var(--line); }
+  .stat::before { content: ""; display: block; width: 26px; height: 3px; border-radius: 2px; background: var(--brand); margin-bottom: 14px; }
+  .stat .num { font-size: 32px; font-weight: 700; color: var(--ink); line-height: 1.1; }
+  .stat .lbl { font-size: 13px; color: var(--muted); margin-top: 6px; font-weight: 600; }
+  .stat.warn::before   { background: #e69b1e; }
+  .stat.warn .num      { color: var(--amber); }
+  .stat.danger::before { background: var(--red); }
+  .stat.danger .num    { color: var(--red); }
+  .stat.exp::before    { background: var(--purple); }
+  .stat.exp .num       { color: var(--purple); }
+  .card .stat-grid { margin-bottom: 0; box-shadow: none; }
+
+  /* ───── أزرار صغيرة ───── */
+  .icon-btn {
+    padding: 5px 9px; margin: 0 2px; width: auto; font-size: 13px; border-radius: 8px;
+    border: none; color: #fff; cursor: pointer; font-weight: 600; font-family: inherit; transition: filter .15s;
+  }
+  .icon-btn:hover { filter: brightness(1.12); }
+  .icon-btn.edit { background: var(--brand); }
+  .icon-btn.del  { background: var(--red); }
+
+  .btn-row { display: flex; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }
   .btn-row button {
-    flex: 1; min-width: 100px; padding: 10px; border: none; border-radius: 8px;
-    font-size: 12px; font-weight: 800; cursor: pointer; color: #fff;
+    flex: 1; min-width: 130px; padding: 10px 14px; min-height: 42px; border: none; border-radius: 10px;
+    font-size: 13.5px; font-weight: 600; cursor: pointer; color: #fff;
+    font-family: inherit; transition: filter .15s;
   }
-  .btn-excel { background: #0f9d58; }
-  .btn-print { background: #5f6368; }
+  .btn-row button:hover { filter: brightness(1.08); }
+  .btn-excel { background: var(--brand); }
+  .btn-print { background: #55655f; }
+
+  /* ───── النافذة المنبثقة ───── */
+  .modal-bg {
+    display: none; position: fixed; inset: 0; background: rgba(6, 24, 19, .6);
+    backdrop-filter: blur(3px); z-index: 100; padding: 16px; overflow-y: auto;
+  }
+  .modal-bg.show { display: block; }
+  .modal { background: var(--surface); border-radius: 18px; padding: 24px; max-width: 540px; margin: 32px auto; box-shadow: var(--sh-3); }
+  .modal h2 { color: var(--ink); margin-bottom: 6px; font-size: 19px; font-weight: 700; }
+
+  /* ───── الباتشات ───── */
+  .batch-item { border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 14px; background: #fbfdfc; }
+  .batch-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .batch-num { font-size: 26px; font-weight: 700; color: var(--brand-d); }
+
+  /* ───── التنبيهات ───── */
+  .alert-banner {
+    background: var(--amber-soft); border-right: 5px solid #e69b1e;
+    padding: 12px 16px; border-radius: 10px; margin-bottom: 10px;
+    font-size: 13.5px; color: #6e3f06; font-weight: 500;
+  }
+  .alert-banner.danger { background: var(--red-soft); border-right-color: var(--red); color: #86201a; font-weight: 600; }
+  .alert-banner.critical { background: var(--red); border-right-color: #7d1a14; color: #fff; font-weight: 600; animation: pulse 2.2s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .85; } }
+  .alert-banner strong { display: block; margin-bottom: 2px; font-weight: 700; font-size: 14.5px; }
+
+  /* ───── النسخ الاحتياطي ───── */
+  .switch-line { display: flex; align-items: center; gap: 10px; margin: 0; cursor: pointer; font-weight: 600; }
+  .bk-auto {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 14px 16px;
+    border: 1px dashed #bccbc3; border-radius: 12px; margin-top: 16px; background: #f9fbfa;
+  }
+  .bk-auto input[type="time"] { width: 140px; }
+  .bk-item {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; margin-bottom: 10px; background: #fbfdfc;
+  }
+  .bk-title { font-weight: 700; color: var(--ink); font-size: 14.5px; }
+  .bk-meta { font-size: 12.5px; color: var(--muted); margin-top: 2px; font-weight: 500; }
+  .bk-tag { display: inline-block; font-size: 11.5px; font-weight: 600; padding: 1px 9px; border-radius: 999px; background: var(--brand-soft); color: var(--brand-d); margin-right: 8px; }
+  .bk-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .bk-actions button {
+    padding: 7px 14px; border: 1px solid var(--line); background: #fff; border-radius: 9px;
+    font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--ink-2); transition: .15s;
+  }
+  .bk-actions button:hover { border-color: #a9d6c2; color: var(--brand-d); background: var(--brand-soft); }
+  .bk-actions button.danger:hover { border-color: #efc6c2; color: var(--red); background: var(--red-soft); }
+
+  /* ───── شاشة الدخول ───── */
+  #loginScreen {
+    display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 16px;
+    background:
+      radial-gradient(900px 520px at 88% -10%, rgba(31, 163, 111, .32), transparent 60%),
+      radial-gradient(700px 480px at -5% 110%, rgba(240, 176, 74, .14), transparent 60%),
+      linear-gradient(160deg, #0e3b31 0%, #08231d 100%);
+  }
+  #loginScreen .card {
+    max-width: 420px; width: 100%; padding: 36px 30px 30px; border: none;
+    box-shadow: var(--sh-3); border-radius: 22px;
+  }
+  #loginScreen h1 {
+    display: flex; flex-direction: column; align-items: center; gap: 16px;
+    text-align: center; margin-bottom: 8px; color: var(--ink); font-size: 22px; font-weight: 700;
+  }
+  #loginScreen h1::before { content: ""; width: 56px; height: 56px; background: var(--mark) no-repeat center / contain; }
+
+  .loading { text-align: center; padding: 40px; color: var(--muted); font-size: 14px; }
+  .spinner {
+    display: inline-block; width: 30px; height: 30px; border: 3px solid var(--brand-soft);
+    border-top-color: var(--brand); border-radius: 50%; animation: spin 1s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .section-title {
+    font-size: 15px; font-weight: 700; color: var(--ink);
+    margin: 16px 0 8px; padding-bottom: 4px; border-bottom: 2px solid var(--brand-soft);
+  }
+
+  /* ───── الموبايل والتابلت ───── */
+  @media (max-width: 959px) {
+    #appWrap { padding: 12px 12px 40px; }
+    #appWrap > :not(nav) { max-width: none; }
+    header { display: block; }
+    nav {
+      position: sticky; top: 0; right: auto; bottom: auto; width: auto; z-index: 30;
+      flex-direction: row; gap: 4px; padding: 8px; overflow-x: auto; scrollbar-width: none;
+      margin: 0 -12px 14px; border-radius: 0 0 14px 14px; box-shadow: 0 6px 16px rgba(6, 24, 19, .18);
+    }
+    nav::-webkit-scrollbar { display: none; }
+    nav::before { display: none; }
+    nav button {
+      width: auto; flex: none; flex-direction: column; gap: 4px; padding: 8px 12px;
+      min-width: 74px; font-size: 11.5px; text-align: center; white-space: nowrap;
+    }
+    nav button.active::before { display: none; }
+    .card { padding: 16px; }
+    .modal { margin: 16px auto; padding: 18px; }
+  }
+
+  @media (max-width: 600px) {
+    .stat-grid { grid-template-columns: repeat(2, 1fr); }
+    .stat { padding: 16px 18px; }
+    .stat .num { font-size: 26px; }
+    .stat:nth-child(3) { border-inline-start: none; }
+    .stat:nth-child(n+3) { border-top: 1px solid var(--line); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+
+  /* ═════════ الجولة الثانية ═════════ */
+
+  /* التطبيق مخفي لحد تسجيل الدخول */
+  #appWrap { display: none; }
+
+  /* شريط علوي: عنوان الصفحة + المستخدم */
+  .user-bar {
+    background: transparent; border: none; box-shadow: none; padding: 0;
+    margin-bottom: 24px; align-items: flex-end; gap: 16px;
+  }
+  .pg-title { font-size: 28px; font-weight: 700; color: var(--ink); line-height: 1.25; }
+  .pg-date { font-size: 13.5px; color: var(--muted); font-weight: 500; margin-top: 2px; }
+  .who {
+    display: flex; align-items: center; gap: 8px; background: var(--surface);
+    border: 1px solid var(--line); border-radius: 999px; padding: 5px 5px 5px 6px;
+    font-size: 13px; color: var(--ink-2); font-weight: 600; box-shadow: var(--sh-1);
+  }
+  .who span { padding: 0 6px 0 12px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .user-bar .who button { border-radius: 999px; padding: 7px 16px; }
+
+  /* العنوان بيتكرر في الكارت، فنخفيه في الشاشات ذات الكارت الواحد */
+  #masuk .card > h2, #keluar .card > h2, #inventory .card > h2, #logIn .card > h2, #logOut .card > h2 { display: none; }
+  .card > h2:first-child + label, .card > h2:first-child + .search-bar { margin-top: 0; }
+  #logIn .row label, #logOut .row label, #reports .row label { margin-top: 0; }
+
+  /* الفورم متتمددش على عرض الشاشة كله */
+  #masuk .card, #keluar .card { max-width: 720px; }
+  #backup .card { max-width: 900px; }
+  .quick-date button { flex: 0 0 auto; padding: 6px 16px; }
+
+  input[type="file"]::file-selector-button {
+    font: inherit; font-size: 13px; font-weight: 600; padding: 7px 14px; margin-inline-end: 12px;
+    border: none; border-radius: 8px; background: var(--brand-soft); color: var(--brand-d); cursor: pointer;
+  }
+
+  /* جداول أسهل في القراءة */
+  tbody tr:nth-child(even) td { background: #fafcfb; }
+  tbody tr:hover td { background: #f1f8f5; }
+
+  /* تنبيهات أهدى */
+  .alert-banner {
+    background: #fff; border: 1px solid #f0dcb0; border-right: 5px solid #e69b1e;
+    color: #5c3a07; font-weight: 500; padding: 14px 18px;
+  }
+  .alert-banner.danger { background: #fff; border-color: #f1c3bf; border-right-color: var(--red); color: #7a1f19; }
+  .alert-banner.critical {
+    background: var(--red-soft); border: 1px solid #f1c3bf; border-right: 5px solid var(--red);
+    color: #7a1f19; animation: none;
+  }
+  .alert-banner.critical strong { color: var(--red); }
+  .alert-banner strong { color: inherit; margin-bottom: 4px; }
+
+  @media (max-width: 959px) {
+    header { display: none; }
+    .user-bar { margin-bottom: 12px; align-items: center; }
+    .pg-title { font-size: 20px; }
+    .pg-date { display: none; }
+    .who { padding: 4px; }
+    .who span { display: none; }
+  }
 </style>
 </head>
 <body>
@@ -140,12 +429,12 @@
 <!-- ═══ شاشة تسجيل الدخول ═══ -->
 <div id="loginScreen">
   <div class="card">
-    <h1>💊 نظام إدارة الأدوية</h1>
+    <h1>نظام إدارة الأدوية</h1>
     <label>الإيميل</label>
     <input id="loginEmail" type="email" placeholder="example@mail.com" autocomplete="username">
     <label>البارسورد</label>
     <input id="loginPass" type="password" placeholder="••••••••" autocomplete="current-password">
-    <button class="btn" onclick="doLogin()">🔐 تسجيل الدخول</button>
+    <button class="btn" onclick="doLogin()">تسجيل الدخول</button>
     <div id="loginMsg" class="msg"></div>
   </div>
 </div>
@@ -154,26 +443,32 @@
 <div id="appWrap">
 
   <div class="user-bar">
-    <span id="userEmail">👤 ...</span>
-    <button onclick="doLogout()">تسجيل خروج</button>
+    <div class="pg">
+      <div class="pg-title" id="pageTitle">لوحة التحكم</div>
+      <div class="pg-date" id="pageDate"></div>
+    </div>
+    <div class="who">
+      <span id="userEmail">...</span>
+      <button onclick="doLogout()">تسجيل خروج</button>
+    </div>
   </div>
 
   <header>
-    <h1>💊 نظام إدارة الأدوية</h1>
+    <h1>نظام إدارة الأدوية</h1>
     <p>وارد · صادر · مخزون · تقارير · تنبيهات</p>
   </header>
 
   <nav>
-    <button data-tab="dashboard" class="active">لوحة</button>
-    <button data-tab="inventory">📦 المخزن</button>
-    <button data-tab="masuk">وارد</button>
-    <button data-tab="keluar">صادر</button>
-    <button data-tab="logIn">سجل وارد</button>
-    <button data-tab="logOut">سجل صرف</button>
-    <button data-tab="reports">📊 تقارير</button>
-    <button data-tab="manage">إدارة</button>
-    <button data-tab="alerts">تنبيهات</button>
-    <button data-tab="backup">نسخ</button>
+    <button data-tab="dashboard" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg><span>لوحة التحكم</span></button>
+    <button data-tab="inventory"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="M12 22V12"/><path d="m3.3 7 8.7 5 8.7-5"/></svg><span>المخزن</span></button>
+    <button data-tab="masuk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17V3"/><path d="m6 11 6 6 6-6"/><path d="M19 21H5"/></svg><span>تسجيل وارد</span></button>
+    <button data-tab="keluar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 9-6-6-6 6"/><path d="M12 3v14"/><path d="M5 21h14"/></svg><span>تسجيل صادر</span></button>
+    <button data-tab="logIn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg><span>سجل الوارد</span></button>
+    <button data-tab="logOut"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M12 12v6"/><path d="m15 15-3-3-3 3"/></svg><span>سجل الصرف</span></button>
+    <button data-tab="reports"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg><span>التقارير</span></button>
+    <button data-tab="manage"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg><span>إدارة الأصناف</span></button>
+    <button data-tab="alerts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span>التنبيهات</span></button>
+    <button data-tab="backup"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg><span>النسخ الاحتياطي</span></button>
   </nav>
 
   <!-- ═══ لوحة ═══ -->
@@ -200,13 +495,13 @@
   <!-- ═══ المخزن (الأدوية المتاحة) ═══ -->
   <section id="inventory" class="panel">
     <div class="card">
-      <h2>📦 الأدوية في المخزن</h2>
+      <h2>الأدوية في المخزن</h2>
       <div class="search-bar">
         <input id="invSearch" placeholder="ابحث بالاسم أو الكود..." oninput="renderInventory()">
       </div>
       <div class="btn-row" style="margin-top:12px">
-        <button class="btn-excel" onclick="exportInventoryExcel()">📥 تصدير Excel</button>
-        <button class="btn-print" onclick="printSection('inventoryTable')">🖨️ طباعة</button>
+        <button class="btn-excel" onclick="exportInventoryExcel()">تصدير Excel</button>
+        <button class="btn-print" onclick="printSection('inventoryTable')">طباعة</button>
       </div>
       <div class="scroll-x" id="inventoryTable">
         <table>
@@ -234,7 +529,7 @@
         <div><label>رقم الباتش</label><input id="inBatch" placeholder="BATCH-2510A"></div>
       </div>
       <label>تاريخ الانتهاء</label>
-      <input id="inExp" type="text" inputmode="numeric" placeholder="YYYY-MM-DD">
+      <input id="inExp" type="date">
       <div class="quick-date">
         <button type="button" onclick="quickExp(6)">+6 شهور</button>
         <button type="button" onclick="quickExp(12)">+سنة</button>
@@ -242,7 +537,7 @@
         <button type="button" onclick="quickExp(36)">+3 سنين</button>
       </div>
       <label>تاريخ الاستلام</label>
-      <input id="inTanggal" type="text" inputmode="numeric" placeholder="YYYY-MM-DD">
+      <input id="inTanggal" type="date">
       <div class="quick-date">
         <button type="button" onclick="setToday('inTanggal')">اليوم</button>
         <button type="button" onclick="setYesterday('inTanggal')">أمس</button>
@@ -271,7 +566,7 @@
       <label>رقم الروشتة</label>
       <input id="outResep" placeholder="RX-2025-001">
       <label>تاريخ الصرف</label>
-      <input id="outTanggal" type="text" inputmode="numeric" placeholder="YYYY-MM-DD">
+      <input id="outTanggal" type="date">
       <div class="quick-date">
         <button type="button" onclick="setToday('outTanggal')">اليوم</button>
         <button type="button" onclick="setYesterday('outTanggal')">أمس</button>
@@ -287,17 +582,17 @@
   <!-- ═══ سجل وارد ═══ -->
   <section id="logIn" class="panel">
     <div class="card">
-      <h2>📥 سجل الوارد</h2>
+      <h2>سجل الوارد</h2>
       <div class="row">
-        <div><label>من تاريخ</label><input id="logInFrom" type="text" placeholder="YYYY-MM-DD" oninput="renderLogIn()"></div>
-        <div><label>إلى تاريخ</label><input id="logInTo" type="text" placeholder="YYYY-MM-DD" oninput="renderLogIn()"></div>
+        <div><label>من تاريخ</label><input id="logInFrom" type="date" oninput="renderLogIn()"></div>
+        <div><label>إلى تاريخ</label><input id="logInTo" type="date" oninput="renderLogIn()"></div>
       </div>
       <div class="search-bar" style="margin-top:8px">
         <input id="logInSearch" placeholder="ابحث باسم الدوا..." oninput="renderLogIn()">
       </div>
       <div class="btn-row" style="margin-top:12px">
-        <button class="btn-excel" onclick="exportLogInExcel()">📥 تصدير Excel</button>
-        <button class="btn-print" onclick="printSection('logInTable')">🖨️ طباعة</button>
+        <button class="btn-excel" onclick="exportLogInExcel()">تصدير Excel</button>
+        <button class="btn-print" onclick="printSection('logInTable')">طباعة</button>
       </div>
       <div class="scroll-x" id="logInTable">
         <table>
@@ -317,17 +612,17 @@
   <!-- ═══ سجل صرف ═══ -->
   <section id="logOut" class="panel">
     <div class="card">
-      <h2>📤 سجل الصرف</h2>
+      <h2>سجل الصرف</h2>
       <div class="row">
-        <div><label>من تاريخ</label><input id="logOutFrom" type="text" placeholder="YYYY-MM-DD" oninput="renderLogOut()"></div>
-        <div><label>إلى تاريخ</label><input id="logOutTo" type="text" placeholder="YYYY-MM-DD" oninput="renderLogOut()"></div>
+        <div><label>من تاريخ</label><input id="logOutFrom" type="date" oninput="renderLogOut()"></div>
+        <div><label>إلى تاريخ</label><input id="logOutTo" type="date" oninput="renderLogOut()"></div>
       </div>
       <div class="search-bar" style="margin-top:8px">
         <input id="logOutSearch" placeholder="ابحث باسم الدوا..." oninput="renderLogOut()">
       </div>
       <div class="btn-row" style="margin-top:12px">
-        <button class="btn-excel" onclick="exportLogOutExcel()">📥 تصدير Excel</button>
-        <button class="btn-print" onclick="printSection('logOutTable')">🖨️ طباعة</button>
+        <button class="btn-excel" onclick="exportLogOutExcel()">تصدير Excel</button>
+        <button class="btn-print" onclick="printSection('logOutTable')">طباعة</button>
       </div>
       <div class="scroll-x" id="logOutTable">
         <table>
@@ -347,15 +642,15 @@
   <!-- ═══ تقارير ═══ -->
   <section id="reports" class="panel">
     <div class="card">
-      <h2>📊 تقرير حركة الأصناف</h2>
+      <h2>تقرير حركة الأصناف</h2>
       <div class="row">
-        <div><label>من تاريخ</label><input id="rptFrom" type="text" placeholder="YYYY-MM-DD"></div>
-        <div><label>إلى تاريخ</label><input id="rptTo" type="text" placeholder="YYYY-MM-DD"></div>
+        <div><label>من تاريخ</label><input id="rptFrom" type="date"></div>
+        <div><label>إلى تاريخ</label><input id="rptTo" type="date"></div>
       </div>
-      <button class="btn purple" onclick="generateReport()">🔄 توليد التقرير</button>
+      <button class="btn purple" onclick="generateReport()">توليد التقرير</button>
       <div class="btn-row" style="margin-top:12px">
-        <button class="btn-excel" onclick="exportReportExcel()">📥 تصدير Excel</button>
-        <button class="btn-print" onclick="printSection('reportTable')">🖨️ طباعة</button>
+        <button class="btn-excel" onclick="exportReportExcel()">تصدير Excel</button>
+        <button class="btn-print" onclick="printSection('reportTable')">طباعة</button>
       </div>
       <div class="scroll-x" id="reportTable">
         <table>
@@ -372,7 +667,7 @@
     </div>
 
     <div class="card">
-      <h2>📈 إحصائيات سريعة</h2>
+      <h2>إحصائيات سريعة</h2>
       <div id="quickStats"></div>
     </div>
   </section>
@@ -380,14 +675,14 @@
   <!-- ═══ إدارة ═══ -->
   <section id="manage" class="panel">
     <div class="card">
-      <h2>🔍 بحث سريع</h2>
+      <h2>بحث سريع</h2>
       <div class="search-bar">
         <input id="searchAll" placeholder="اكتب اسم أو كود أو باركود..." oninput="renderAllLists()">
       </div>
     </div>
     <div class="card">
-      <h2>📦 الأصناف</h2>
-      <button class="btn" onclick="openObatForm()">➕ إضافة صنف جديد</button>
+      <h2>الأصناف</h2>
+      <button class="btn" onclick="openObatForm()">إضافة صنف جديد</button>
       <div class="scroll-x" style="margin-top:12px">
         <table>
           <thead><tr><th>كود</th><th>الاسم</th><th>الفئة</th><th>الباركود</th><th>الحد الأدنى</th><th>إجراءات</th></tr></thead>
@@ -397,7 +692,7 @@
       <div id="emptyObatMg" class="empty" style="display:none">مفيش أصناف</div>
     </div>
     <div class="card">
-      <h2>📋 كل الحركات</h2>
+      <h2>كل الحركات</h2>
       <div class="scroll-x">
         <table>
           <thead><tr><th>رقم</th><th>النوع</th><th>الدوا</th><th>الكمية</th><th>التاريخ</th><th>إجراء</th></tr></thead>
@@ -407,7 +702,7 @@
       <div id="emptyTrxMg" class="empty" style="display:none">مفيش حركات</div>
     </div>
     <div class="card">
-      <h2>📊 الرصيد التفصيلي (FIFO)</h2>
+      <h2>الرصيد التفصيلي (FIFO)</h2>
       <div id="batchView"></div>
     </div>
   </section>
@@ -415,15 +710,15 @@
   <!-- ═══ تنبيهات ═══ -->
   <section id="alerts" class="panel">
     <div class="card">
-      <h2>🚨 تنبيهات انتهاء الصلاحية</h2>
+      <h2>تنبيهات انتهاء الصلاحية</h2>
       <div id="expiryAlerts"></div>
     </div>
     <div class="card">
-      <h2>⚠️ تنبيهات نقص المخزون</h2>
+      <h2>تنبيهات نقص المخزون</h2>
       <div id="stockAlerts"></div>
     </div>
     <div class="card">
-      <h2>💰 بحث بالباركود</h2>
+      <h2>بحث بالباركود</h2>
       <label>امسح أو اكتب الباركود</label>
       <input id="barcodeSearch" placeholder="SCAN..." oninput="barcodeLookup()">
       <div id="barcodeResult" class="hint"></div>
@@ -433,14 +728,33 @@
   <!-- ═══ نسخ ═══ -->
   <section id="backup" class="panel">
     <div class="card">
-      <h2>💾 النسخ الاحتياطي</h2>
-      <button class="btn gray" onclick="exportData()">📤 تصدير JSON</button>
-      <label style="margin-top:12px">📥 استيراد ملف</label>
-      <input type="file" id="importFile" accept="application/json">
-      <label style="margin-top:12px;color:#d93025">⚠️ منطقة خطر</label>
-      <button class="btn red" onclick="wipeAll()">🗑️ مسح كل البيانات</button>
-      <button class="btn red" onclick="wipeTrx()">🗑️ مسح الحركات فقط</button>
+      <h2>النسخ الاحتياطي</h2>
+      <label>اسم للنسخة (اختياري)</label>
+      <input id="backupLabel" placeholder="مثال: قبل الجرد">
+      <div class="btn-row" style="margin-top:14px">
+        <button class="btn-excel" onclick="saveBackupNow()">حفظ نسخة الآن</button>
+        <button class="btn-print" onclick="exportData()">تنزيل كملف JSON</button>
+      </div>
+      <div class="bk-auto">
+        <label class="switch-line"><input type="checkbox" id="autoBackupOn" onchange="saveAutoBackupSettings()"><span>نسخة تلقائية يوميًا الساعة</span></label>
+        <input type="time" id="autoBackupTime" value="22:00" onchange="saveAutoBackupSettings()">
+      </div>
+      <div class="hint">النسخ بتتحفظ في المتصفح ده بس. النسخ التلقائي بيشتغل طول ما الصفحة مفتوحة، ولو مفتوحة بعد الوقت اللي اخترته بياخد نسخة أول ما تفتحها. لحفظ نسخة خارج المتصفح استخدم "تنزيل كملف JSON".</div>
       <div id="msgBackup" class="msg"></div>
+    </div>
+    <div class="card">
+      <h2>النسخ المحفوظة</h2>
+      <div id="backupList"></div>
+    </div>
+    <div class="card">
+      <h2>استيراد ملف نسخة</h2>
+      <input type="file" id="importFile" accept="application/json">
+      <div class="hint">الاستيراد بيضيف الأصناف والحركات الناقصة بس، ومش بيكرر الحركات الموجودة.</div>
+    </div>
+    <div class="card danger-zone">
+      <h2>منطقة الخطر</h2>
+      <button class="btn red" style="margin-top:0" onclick="wipeAll()">مسح كل البيانات</button>
+      <button class="btn red" onclick="wipeTrx()">مسح الحركات فقط</button>
     </div>
   </section>
 
@@ -542,7 +856,7 @@ function showApp() {
   document.getElementById('appWrap').style.display = 'block';
   sb.auth.getUser().then(({ data }) => {
     if (data?.user) {
-      document.getElementById('userEmail').textContent = '👤 ' + data.user.email;
+      document.getElementById('userEmail').textContent = '' + data.user.email;
     }
   });
   refreshAll();
@@ -724,6 +1038,7 @@ async function refreshAll() {
     renderLogOut(trx);
     renderAllLists();
     renderQuickStats(obats, trx, stokMap);
+    renderBackups();
   } catch (err) {
     console.error('refreshAll error:', err);
     alert('خطأ في جلب البيانات: ' + err.message);
@@ -832,13 +1147,13 @@ function renderDashAlerts(trx) {
   let html = '';
   if (expired.length) {
     html += `<div class="alert-banner critical">
-      🚨 <strong>${expired.length} باتش منتهي الصلاحية — تخلص منه فوراً!</strong>
+      <strong>${expired.length} باتش منتهي الصلاحية — تخلص منه فوراً!</strong>
       ${expired.slice(0, 3).map(x => `${x.nama} (${x.batch || '-'}) — منذ ${Math.abs(x.days)} يوم`).join(' · ')}
     </div>`;
   }
   if (critical.length) {
     html += `<div class="alert-banner danger">
-      🔴 <strong>${critical.length} باتش هينتهي خلال 30 يوم!</strong>
+      <strong>${critical.length} باتش هينتهي خلال 30 يوم!</strong>
       ${critical.slice(0, 3).map(x => `${x.nama} (${x.batch || '-'}) — ${x.days} يوم`).join(' · ')}
     </div>`;
   }
@@ -856,7 +1171,7 @@ function renderExpiryAlerts(trx) {
   if (!el) return;
   const list = nearExpiryList(trx, 6);
   if (!list.length) {
-    el.innerHTML = '<div class="empty">مفيش باتشات قريبة الانتهاء خلال 6 شهور ✅</div>';
+    el.innerHTML = '<div class="empty">مفيش باتشات قريبة الانتهاء خلال 6 شهور </div>';
     return;
   }
   el.innerHTML = list.map(x => {
@@ -866,7 +1181,7 @@ function renderExpiryAlerts(trx) {
       label = `منتهي منذ ${Math.abs(x.days)} يوم`;
     } else if (x.days <= 30) {
       cls = 'expired'; bannerCls = 'danger';
-      label = `🔴 باقي ${x.days} يوم`;
+      label = `باقي ${x.days} يوم`;
     } else {
       cls = 'warn'; bannerCls = '';
       label = `باقي ${x.days} يوم`;
@@ -888,7 +1203,7 @@ function renderStockAlerts(obats, stokMap) {
     if (r <= (o.min || 0)) low.push({ ...o, stock: r });
   });
   if (!low.length) {
-    el.innerHTML = '<div class="empty">كل الأصناف فوق الحد الأدنى ✅</div>';
+    el.innerHTML = '<div class="empty">كل الأصناف فوق الحد الأدنى </div>';
     return;
   }
   el.innerHTML = low.map(o => `
@@ -1111,7 +1426,7 @@ function printSection(id) {
       .badge { padding: 2px 8px; border-radius: 10px; font-size: 11px; }
     </style>
     </head><body>
-      <h2>💊 نظام إدارة الأدوية</h2>
+      <h2>نظام إدارة الأدوية</h2>
       <p style="font-size:12px;color:#666">تاريخ الطباعة: ${todayStr()}</p>
       ${el.innerHTML}
     </body></html>
@@ -1137,8 +1452,8 @@ async function renderAllLists() {
         <td>${o.kode}</td><td>${o.nama}</td><td>${o.kategori || '-'}</td>
         <td>${o.barcode || '-'}</td><td>${o.min || 0}</td>
         <td>
-          <button class="icon-btn edit" onclick="openObatForm('${o.kode}')">✏️</button>
-          <button class="icon-btn del" onclick="deleteObat('${o.kode}')">🗑️</button>
+          <button class="icon-btn edit" onclick="openObatForm('${o.kode}')">تعديل</button>
+          <button class="icon-btn del" onclick="deleteObat('${o.kode}')">حذف</button>
         </td>
       </tr>`).join('');
     document.getElementById('emptyObatMg').style.display = obats.length ? 'none' : 'block';
@@ -1157,7 +1472,7 @@ async function renderTrxList() {
       <td><span class="badge ${t.tipe === 'وارد' ? 'in' : 'exit'}">${t.tipe}</span></td>
       <td>${t.nama}</td><td>${t.jumlah}</td>
       <td>${(t.tanggal || '').slice(0, 10)}</td>
-      <td><button class="icon-btn del" onclick="deleteTrx(${t.id})">🗑️</button></td>
+      <td><button class="icon-btn del" onclick="deleteTrx(${t.id})">حذف</button></td>
     </tr>`).join('');
   document.getElementById('emptyTrxMg').style.display = trx.length ? 'none' : 'block';
 }
@@ -1178,7 +1493,7 @@ async function renderBatchView() {
         if (d) {
           const days = Math.ceil((d - today) / 864e5);
           if (days < 0) expBadge = `<span class="badge expired">منتهي</span>`;
-          else if (days <= 30) expBadge = `<span class="badge expired">${days}ي 🔴</span>`;
+          else if (days <= 30) expBadge = `<span class="badge expired">${days}ي </span>`;
           else if (days <= 180) expBadge = `<span class="badge warn">${days}ي</span>`;
           else expBadge = `<span class="badge ok">${days}ي</span>`;
         }
@@ -1416,13 +1731,8 @@ document.getElementById('importFile').onchange = async e => {
   try {
     const txt = await f.text();
     const data = JSON.parse(txt);
-    if (data.obat) for (const o of data.obat) await dbPutObat(o);
-    if (data.transaksi) for (const t of data.transaksi) {
-      delete t.id;
-      await dbPutTrx(t);
-    }
-    clearCache();
-    showMsg('msgBackup', 'تم الاستيراد.', true);
+    const res = await restoreData(data);
+    showMsg('msgBackup', `تم الاستيراد: ${res.addedO} صنف و${res.addedT} حركة جديدة.`, true);
     refreshAll();
   } catch (err) {
     showMsg('msgBackup', 'خطأ في الملف: ' + err.message, false);
@@ -1466,6 +1776,209 @@ setToday('outTanggal');
 document.getElementById('loginPass').addEventListener('keypress', e => {
   if (e.key === 'Enter') doLogin();
 });
+
+/* ═══════════════════════════════════════════
+   اختيار التاريخ من التقويم
+   ═══════════════════════════════════════════ */
+document.addEventListener('click', e => {
+  const t = e.target;
+  if (t && t.matches && t.matches('input[type="date"], input[type="time"]')) {
+    try { t.showPicker(); } catch (err) { /* المتصفح مش بيدعم الفتح التلقائي */ }
+  }
+});
+
+/* ═══════════════════════════════════════════
+   النسخ الاحتياطي
+   ═══════════════════════════════════════════ */
+const BK_KEY = 'medsys_backups_v1';
+const BK_AUTO_KEY = 'medsys_autobackup_v1';
+const BK_MAX = 15;
+
+function escHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function bkLoad() {
+  try { return JSON.parse(localStorage.getItem(BK_KEY) || '[]'); } catch (e) { return []; }
+}
+
+function bkWhen(iso) {
+  const d = new Date(iso);
+  return `${dateToStr(d)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+async function saveBackupNow(auto) {
+  try {
+    const obat = await getObats(true);
+    const transaksi = await getTrx(true);
+    const labelEl = document.getElementById('backupLabel');
+    const label = auto === true ? '' : (labelEl ? labelEl.value.trim() : '');
+    const nowIso = new Date().toISOString();
+
+    const list = bkLoad();
+    list.push({
+      id: Date.now(), ts: nowIso, label, auto: auto === true,
+      nObat: obat.length, nTrx: transaksi.length,
+      data: { obat, transaksi, exported: nowIso, version: 3 }
+    });
+
+    let dropped = 0;
+    while (list.length > BK_MAX) { list.shift(); dropped++; }
+
+    let saved = false;
+    while (!saved) {
+      try {
+        localStorage.setItem(BK_KEY, JSON.stringify(list));
+        saved = true;
+      } catch (e) {
+        if (list.length <= 1) break;
+        list.shift(); dropped++;
+      }
+    }
+
+    if (!saved) {
+      showMsg('msgBackup', 'المساحة في المتصفح مش كفاية. نزّل النسخة كملف JSON.', false);
+      return;
+    }
+    if (labelEl && auto !== true) labelEl.value = '';
+    showMsg('msgBackup',
+      (auto === true ? 'تم حفظ النسخة التلقائية.' : 'تم حفظ النسخة.') +
+      (dropped ? ` اتمسحت ${dropped} نسخة قديمة عشان المساحة.` : ''), true);
+    renderBackups();
+  } catch (err) {
+    showMsg('msgBackup', 'خطأ في حفظ النسخة: ' + err.message, false);
+  }
+}
+
+function renderBackups() {
+  const el = document.getElementById('backupList');
+  if (!el) return;
+  const list = bkLoad().slice().reverse();
+  if (!list.length) {
+    el.innerHTML = '<div class="empty">مفيش نسخ محفوظة. اضغط "حفظ نسخة الآن" لأول نسخة.</div>';
+    return;
+  }
+  el.innerHTML = list.map(b => {
+    const kb = Math.max(1, Math.round(JSON.stringify(b.data).length / 1024));
+    const title = b.label ? escHtml(b.label) : (b.auto ? 'نسخة تلقائية' : 'نسخة يدوية');
+    return `<div class="bk-item">
+      <div>
+        <div class="bk-title">${title}${b.auto ? '<span class="bk-tag">تلقائي</span>' : ''}</div>
+        <div class="bk-meta">${bkWhen(b.ts)} · ${b.nObat} صنف · ${b.nTrx} حركة · ${kb} ك.ب</div>
+      </div>
+      <div class="bk-actions">
+        <button onclick="downloadBackup(${b.id})">تنزيل</button>
+        <button onclick="restoreBackup(${b.id})">استرجاع</button>
+        <button class="danger" onclick="deleteBackup(${b.id})">حذف</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function downloadBackup(id) {
+  const b = bkLoad().find(x => x.id === id);
+  if (!b) return;
+  const d = new Date(b.ts);
+  const blob = new Blob([JSON.stringify(b.data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `sistem-obat-${todayCompact()}-${pad(d.getHours())}${pad(d.getMinutes())}.json`;
+  a.click();
+}
+
+async function restoreBackup(id) {
+  const b = bkLoad().find(x => x.id === id);
+  if (!b) return;
+  if (!confirm(`استرجاع نسخة ${bkWhen(b.ts)}؟\nهيتضاف أي صنف أو حركة ناقصة، ومش هيتمسح حاجة موجودة.`)) return;
+  try {
+    const res = await restoreData(b.data);
+    showMsg('msgBackup', `تم الاسترجاع: ${res.addedO} صنف و${res.addedT} حركة اتضافوا.`, true);
+    refreshAll();
+  } catch (err) {
+    showMsg('msgBackup', 'خطأ في الاسترجاع: ' + err.message, false);
+  }
+}
+
+function deleteBackup(id) {
+  if (!confirm('حذف النسخة دي؟')) return;
+  const list = bkLoad().filter(x => x.id !== id);
+  try { localStorage.setItem(BK_KEY, JSON.stringify(list)); } catch (e) { /* ignore */ }
+  renderBackups();
+}
+
+async function restoreData(data) {
+  let addedO = 0, addedT = 0;
+  if (Array.isArray(data.obat)) {
+    for (const o of data.obat) { await dbPutObat(o); addedO++; }
+  }
+  if (Array.isArray(data.transaksi)) {
+    const existing = new Set((await getTrx(true)).map(t => t.nomor));
+    for (const t of data.transaksi) {
+      if (existing.has(t.nomor)) continue;
+      await dbPutTrx(t);
+      addedT++;
+    }
+  }
+  clearCache();
+  return { addedO, addedT };
+}
+
+/* ───── النسخ التلقائي ───── */
+function bkAutoLoad() {
+  const def = { on: false, time: '22:00', last: '' };
+  try { return Object.assign(def, JSON.parse(localStorage.getItem(BK_AUTO_KEY) || '{}')); } catch (e) { return def; }
+}
+function bkAutoStore(s) {
+  try { localStorage.setItem(BK_AUTO_KEY, JSON.stringify(s)); } catch (e) { /* ignore */ }
+}
+function saveAutoBackupSettings() {
+  const s = bkAutoLoad();
+  s.on = document.getElementById('autoBackupOn').checked;
+  s.time = document.getElementById('autoBackupTime').value || '22:00';
+  bkAutoStore(s);
+}
+function initAutoBackupUI() {
+  const s = bkAutoLoad();
+  const on = document.getElementById('autoBackupOn');
+  const tm = document.getElementById('autoBackupTime');
+  if (on) on.checked = !!s.on;
+  if (tm) tm.value = s.time;
+}
+
+async function autoBackupTick() {
+  const s = bkAutoLoad();
+  if (!s.on) return;
+  if (document.getElementById('appWrap').style.display !== 'block') return;
+  const now = new Date();
+  const hm = pad(now.getHours()) + ':' + pad(now.getMinutes());
+  if (s.last === todayStr() || hm < s.time) return;
+  s.last = todayStr();
+  bkAutoStore(s);
+  await saveBackupNow(true);
+}
+setInterval(autoBackupTick, 30000);
+setTimeout(autoBackupTick, 4000);
+
+initAutoBackupUI();
+renderBackups();
+
+/* ═══════════════════════════════════════════
+   عنوان الصفحة والتاريخ
+   ═══════════════════════════════════════════ */
+(function () {
+  const t = document.getElementById('pageTitle');
+  const d = document.getElementById('pageDate');
+  if (d) {
+    try {
+      d.textContent = new Date().toLocaleDateString('ar-EG-u-nu-latn',
+        { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    } catch (e) { /* ignore */ }
+  }
+  document.querySelectorAll('nav button').forEach(b => b.addEventListener('click', () => {
+    const sp = b.querySelector('span');
+    if (t && sp) t.textContent = sp.textContent;
+  }));
+})();
 </script>
 </body>
 </html>
