@@ -9,7 +9,7 @@
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
@@ -394,7 +394,7 @@
     background: radial-gradient(circle, var(--c), transparent 68%); opacity: .16; transition: opacity .35s, transform .35s; }
   .stat:hover { transform: translateY(-4px); border-color: var(--c); box-shadow: var(--sh-1), 0 12px 36px -12px var(--c); }
   .stat:hover::after { opacity: .3; transform: scale(1.25); }
-  .stat .num { font-family: "Space Grotesk","IBM Plex Sans Arabic",sans-serif; font-weight: 700; font-size: 38px; letter-spacing: -.5px; text-shadow: 0 0 24px color-mix(in srgb, var(--c) 45%, transparent); }
+  .stat .num { font-family: "IBM Plex Sans Arabic",sans-serif; font-weight: 700; font-size: 38px; letter-spacing: -.5px; text-shadow: 0 0 24px color-mix(in srgb, var(--c) 45%, transparent); }
   .stat .lbl { letter-spacing: .3px; }
 
   /* الجداول */
@@ -442,7 +442,7 @@
   .alert-banner { background: var(--surface); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-radius: 14px; box-shadow: var(--sh-1); }
   .alert-banner.critical { background: var(--red-soft); box-shadow: var(--sh-1), 0 0 26px -10px var(--red); }
   .batch-item, .bk-item, .bk-auto { border-radius: 14px; }
-  .batch-num { font-family: "Space Grotesk","IBM Plex Sans Arabic",sans-serif; }
+  .batch-num { font-family: "IBM Plex Sans Arabic",sans-serif; }
 
   /* حركة دخول الصفحات */
   .panel.active { animation: panelIn .55s cubic-bezier(.2,.8,.2,1) both; }
@@ -485,7 +485,7 @@
   .stat.rate { --c: var(--cyan); } .stat.rate .num { color: var(--cyan); }
   .rate-chip, .cov-chip, .ord-chip {
     display: inline-flex; align-items: baseline; gap: 5px; padding: 4px 12px; border-radius: 10px; font-weight: 700; white-space: nowrap;
-    font-family: "Space Grotesk","IBM Plex Sans Arabic",sans-serif; --k: var(--cyan); color: var(--k);
+    font-family: "IBM Plex Sans Arabic",sans-serif; --k: var(--cyan); color: var(--k);
     background: rgba(60,200,255,.14); box-shadow: inset 0 0 0 1px rgba(60,200,255,.4);
     background: color-mix(in srgb, var(--k) 14%, transparent);
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--k) 40%, transparent), 0 0 18px -7px var(--k);
@@ -505,6 +505,62 @@
   .user-chip { direction: ltr; unicode-bidi: plaintext; white-space: nowrap; max-width: none; }
   #consTable th, #consTable td { padding: 12px 10px; }
   #consTable th:first-child, #consTable td:first-child { padding-inline-start: 14px; }
+
+  /* ═══════════════════════════════════════════════════════════
+     وضع الأداء للموبايل / الأبلكيشن
+     بيشيل البلور والأنيميشن التقيل ويخلي الشكل نفس الألوان
+     (الكمبيوتر مش بيتأثر)
+     ═══════════════════════════════════════════════════════════ */
+  @media (max-width: 959px), (hover: none) {
+    /* إلغاء البلور نهائيًا — أهم تعديل */
+    *, *::before, *::after {
+      -webkit-backdrop-filter: none !important;
+      backdrop-filter: none !important;
+    }
+
+    /* خلفية ثابتة بدل المتحركة */
+    body::before { animation: none !important; inset: 0 !important; will-change: auto !important; }
+    body::after { display: none !important; }
+
+    /* خلفيات صلبة بدل الزجاج */
+    html[data-theme="dark"] {
+      --surface: #0f1a2e; --field: #0a1222;
+      --soft: #121c30; --soft-2: #101a2c; --th: #15203a; --zebra: #0f1a2c;
+    }
+    html[data-theme="light"] {
+      --surface: #ffffff; --field: #ffffff; --soft: #f1f5fb; --soft-2: #f7f9fd; --th: #eef2f9; --zebra: #f7f9fd;
+    }
+    .scroll-x { background: transparent !important; }
+    nav { background: #0a1226 !important; -webkit-mask-image: none !important; mask-image: none !important; }
+    .modal-bg { background: rgba(2,6,16,.85) !important; }
+
+    /* إلغاء الأنيميشنات التقيلة */
+    .badge::before { animation: none !important; box-shadow: none !important; }
+    .panel.active, .panel.active > *, .stat, .modal, .toast, #loginScreen .card { animation: none !important; }
+    #loginScreen .card::after { display: none !important; }
+    #loginScreen h1::before { animation: none !important; filter: none !important; }
+
+    /* إلغاء التوهج والظلال التقيلة */
+    .stat .num { text-shadow: none !important; }
+    .stat::before { box-shadow: none !important; }
+    .stat::after { display: none !important; }
+    .card, .stat, .alert-banner, .alert-banner.critical, .card.danger-zone, .who, .theme-btn, .toast, .modal,
+    .rate-chip, .cov-chip, .ord-chip, .user-chip, .sum-line .pill, .bk-tag, .badge.expired {
+      box-shadow: none !important;
+    }
+    .card h2::before { box-shadow: none !important; }
+    .card::before { display: none !important; }
+    nav button.active { box-shadow: none !important; }
+    nav button.active svg { filter: none !important; }
+    nav button.active::before { box-shadow: none !important; }
+    .pg-title { background: none !important; -webkit-text-fill-color: var(--ink) !important; color: var(--ink); }
+    button.btn { background-size: 100% 100% !important; box-shadow: none !important; transition: none !important; }
+    input:focus, select:focus, textarea:focus { box-shadow: 0 0 0 3px var(--brand-ring) !important; }
+
+    /* إلغاء الترانزيشن */
+    tbody tr, td, .card, .stat, nav button, .icon-btn, .btn-row button { transition: none !important; }
+    tbody tr:hover td { box-shadow: none !important; }
+  }
 </style>
 </head>
 <body>
@@ -586,7 +642,7 @@
       </div>
       <div class="scroll-x" id="inventoryTable">
         <table>
-          <thead><tr><th>الكود</th><th>الاسم</th><th>الفئة</th><th>الرصيد</th><th>الوحدة</th><th>الحد الأدنى</th><th>الحالة</th></tr></thead>
+          <thead><tr><th>الكود</th><th>الاسم</th><th>الفئة</th><th>الرصيد</th><th>الوحدة</th><th>الحد الأدنى</th><th>الحالة</th><th class="noprint">إجراء</th></tr></thead>
           <tbody id="tbodyInventory"></tbody>
         </table>
       </div>
@@ -800,6 +856,7 @@
         </table>
       </div>
       <div id="emptyTrxMg" class="empty" style="display:none">مفيش حركات</div>
+      <div class="hint" id="trxMgHint"></div>
     </div>
     <div class="card">
       <h2>الرصيد التفصيلي (FIFO)</h2>
@@ -868,11 +925,57 @@
       <div><label>سعر البيع</label><input id="mObJual" type="number" step="0.01" value="0"></div>
     </div>
     <label>ملاحظة</label><input id="mObNote" placeholder="اختياري">
+    <div id="mObOpenBox" style="margin-top:16px;padding:14px;border:1px dashed var(--field-line);border-radius:12px">
+      <div style="font-weight:700;color:var(--ink)">رصيد افتتاحي (اختياري)</div>
+      <div class="hint" style="margin-top:2px">لو الصنف عليه كمية دلوقتي، سجلها هنا مع الباتش وتاريخ الصلاحية.</div>
+      <div class="row">
+        <div><label>الكمية</label><input id="mObOpenQty" type="number" min="0" placeholder="0"></div>
+        <div><label>رقم الباتش</label><input id="mObOpenBatch" placeholder="BATCH-2510A"></div>
+      </div>
+      <label>تاريخ الانتهاء</label>
+      <input id="mObOpenExp" type="date">
+      <div class="quick-date">
+        <button type="button" onclick="quickExpTo('mObOpenExp',6)">+6 شهور</button>
+        <button type="button" onclick="quickExpTo('mObOpenExp',12)">+سنة</button>
+        <button type="button" onclick="quickExpTo('mObOpenExp',24)">+سنتين</button>
+        <button type="button" onclick="quickExpTo('mObOpenExp',36)">+3 سنين</button>
+      </div>
+    </div>
     <div class="row" style="margin-top:16px">
       <button class="btn green" onclick="saveObat()">حفظ</button>
       <button class="btn gray" onclick="closeObatForm()">إلغاء</button>
     </div>
     <div id="msgModal" class="msg"></div>
+  </div>
+</div>
+
+<!-- نافذة الرصيد الافتتاحي -->
+<div id="modalOpen" class="modal-bg">
+  <div class="modal">
+    <h2>رصيد افتتاحي</h2>
+    <div class="sub" id="oDrug"></div>
+    <input type="hidden" id="oKode">
+    <div class="row">
+      <div><label>الكمية</label><input id="oQty" type="number" min="1" placeholder="200"></div>
+      <div><label>رقم الباتش</label><input id="oBatch" placeholder="BATCH-2510A"></div>
+    </div>
+    <label>تاريخ الانتهاء</label>
+    <input id="oExp" type="date">
+    <div class="quick-date">
+      <button type="button" onclick="quickExpTo('oExp',6)">+6 شهور</button>
+      <button type="button" onclick="quickExpTo('oExp',12)">+سنة</button>
+      <button type="button" onclick="quickExpTo('oExp',24)">+سنتين</button>
+      <button type="button" onclick="quickExpTo('oExp',36)">+3 سنين</button>
+    </div>
+    <label>تاريخ الرصيد</label>
+    <input id="oDate" type="date">
+    <label>ملاحظة</label>
+    <input id="oNote" placeholder="رصيد افتتاحي">
+    <div class="row" style="margin-top:16px">
+      <button class="btn green" onclick="saveOpening(this)">حفظ الرصيد</button>
+      <button class="btn gray" onclick="closeOpening()">إلغاء</button>
+    </div>
+    <div id="msgOpen" class="msg"></div>
   </div>
 </div>
 
@@ -1098,11 +1201,13 @@ function computeAllStocks(obats, trx) {
   return map;
 }
 
-/* ═══ تحديث الشاشات ═══ */
+/* ═══ تحديث الشاشات (بيرسم التاب المفتوح بس — أخف على الموبايل) ═══ */
 async function refreshAll() {
   try {
     const obats = await getObats();
     const trx = await getTrx();
+    const active = document.querySelector('.panel.active')?.id || 'dashboard';
+
     const opts = obats.map(o => `<option value="${escHtml(o.kode)}">${escHtml(o.kode)} — ${escHtml(o.nama)}</option>`).join('');
     const prevIn = $('inKode').value, prevOut = $('outKode').value;
     $('inKode').innerHTML = opts; $('outKode').innerHTML = opts;
@@ -1111,17 +1216,21 @@ async function refreshAll() {
 
     const stokMap = computeAllStocks(obats, trx);
     renderStats(obats, trx, stokMap);
-    renderDashboardTrx(trx);
-    renderInventory(obats, stokMap);
-    renderDashAlerts(trx);
-    renderExpiryAlerts(trx);
-    renderStockAlerts(obats, stokMap);
-    renderLogIn(trx);
-    renderLogOut(trx);
-    renderAllLists();
-    renderQuickStats(obats, trx, stokMap);
-    renderBackups();
-    if ($('consume').classList.contains('active')) { if ($('cFrom').value && $('cTo').value) generateConsumption(); else setConsRange('3m'); }
+
+    switch (active) {
+      case 'dashboard': renderDashboardTrx(trx); renderDashAlerts(trx); break;
+      case 'inventory': renderInventory(obats, stokMap); break;
+      case 'keluar': updateStockHint(); break;
+      case 'logIn': renderLogIn(trx); break;
+      case 'logOut': renderLogOut(trx); break;
+      case 'consume':
+        if ($('cFrom').value && $('cTo').value) generateConsumption(); else setConsRange('3m');
+        break;
+      case 'reports': renderQuickStats(obats, trx, stokMap); break;
+      case 'manage': renderAllLists(); break;
+      case 'alerts': renderExpiryAlerts(trx); renderStockAlerts(obats, stokMap); break;
+      case 'backup': renderBackups(); break;
+    }
   } catch (err) {
     console.error('refreshAll error:', err);
     alert('خطأ في جلب البيانات: ' + err.message);
@@ -1167,7 +1276,8 @@ function renderInventory(obats, stokMap) {
     else if (r <= min) { badge = 'ناقص'; cls = 'low'; }
     else { badge = 'متاح'; cls = 'ok'; }
     return `<tr><td>${escHtml(o.kode)}</td><td>${escHtml(o.nama)}</td><td>${escHtml(o.kategori || '-')}</td>
-      <td>${r}</td><td>${escHtml(o.unit || '-')}</td><td>${min}</td><td><span class="badge ${cls}">${badge}</span></td></tr>`;
+      <td>${r}</td><td>${escHtml(o.unit || '-')}</td><td>${min}</td><td><span class="badge ${cls}">${badge}</span></td>
+      <td class="noprint"><button class="icon-btn edit" onclick="openOpening(this.dataset.k)" data-k="${escHtml(o.kode)}">رصيد</button></td></tr>`;
   }).join('');
   $('emptyInventory').style.display = filtered.length ? 'none' : 'block';
 }
@@ -1375,8 +1485,12 @@ async function generateConsumption() {
   const stokMap = computeAllStocks(obats, trx);
   const outs = trx.filter(t => t.tipe === 'صادر' && (t.tanggal || '').slice(0, 10) >= from && (t.tanggal || '').slice(0, 10) <= to);
 
+  /* تجميع الصرف لكل صنف مرة واحدة بدل filter لكل صنف */
+  const totals = {};
+  outs.forEach(t => { totals[t.kode] = (totals[t.kode] || 0) + (Number(t.jumlah) || 0); });
+
   _consAll = obats.map(o => {
-    const total = outs.filter(t => t.kode === o.kode).reduce((s, t) => s + (Number(t.jumlah) || 0), 0);
+    const total = totals[o.kode] || 0;
     const monthly = total / months;
     const stock = Number(stokMap[o.kode]) || 0;
     const cover = monthly > 0 ? stock / monthly : null;
@@ -1501,12 +1615,20 @@ async function generateReport() {
   const obats = await getObats(), trx = await getTrx();
   const stokMap = computeAllStocks(obats, trx);
   const inRange = t => { const d = (t.tanggal || '').slice(0, 10); return (!from || d >= from) && (!to || d <= to); };
+
+  /* تجميع مرة واحدة بدل filter لكل صنف */
+  const sums = {};
+  trx.forEach(t => {
+    if (!inRange(t)) return;
+    const s = sums[t.kode] || (sums[t.kode] = { in: 0, out: 0 });
+    if (t.tipe === 'وارد') s.in += t.jumlah; else if (t.tipe === 'صادر') s.out += t.jumlah;
+  });
+
   _lastReport = obats.map(o => {
-    const totalIn = trx.filter(t => t.kode === o.kode && t.tipe === 'وارد' && inRange(t)).reduce((s, t) => s + t.jumlah, 0);
-    const totalOut = trx.filter(t => t.kode === o.kode && t.tipe === 'صادر' && inRange(t)).reduce((s, t) => s + t.jumlah, 0);
+    const s = sums[o.kode] || { in: 0, out: 0 };
     const r = stokMap[o.kode] || 0;
     const status = r === 0 ? 'خالص' : r <= (o.min || 0) ? 'ناقص' : 'متاح';
-    return { kode: o.kode, nama: o.nama, in: totalIn, out: totalOut, stock: r, status };
+    return { kode: o.kode, nama: o.nama, in: s.in, out: s.out, stock: r, status };
   });
   $('tbodyReport').innerHTML = _lastReport.map(r => `
     <tr><td>${escHtml(r.kode)}</td><td>${escHtml(r.nama)}</td>
@@ -1603,13 +1725,17 @@ async function renderAllLists() {
   renderBatchView();
 }
 
+const TRX_MG_LIMIT = 200;
 async function renderTrxList() {
-  const trx = (await getTrx()).slice().sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || '') || b.id - a.id);
+  const all = (await getTrx()).slice().sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || '') || b.id - a.id);
+  const trx = all.slice(0, TRX_MG_LIMIT);
   $('tbodyTrxMg').innerHTML = trx.map(t => `
     <tr><td>${escHtml(t.nomor)}</td><td>${trxBadge(t)}</td><td>${escHtml(t.nama)}</td><td>${t.jumlah}</td>
       <td>${(t.tanggal || '').slice(0, 10)}</td><td>${userCell(t)}</td><td class="wrap">${escHtml(t.note || '-')}</td>
       <td>${editBtn(t)}<button class="icon-btn del" onclick="deleteTrx(${t.id})">حذف</button></td></tr>`).join('');
-  $('emptyTrxMg').style.display = trx.length ? 'none' : 'block';
+  $('emptyTrxMg').style.display = all.length ? 'none' : 'block';
+  const hint = $('trxMgHint');
+  if (hint) hint.textContent = all.length > TRX_MG_LIMIT ? `معروض آخر ${TRX_MG_LIMIT} حركة من ${all.length}. استخدم "سجل الوارد" و"سجل الصرف" للبحث في الباقي.` : '';
 }
 
 async function renderBatchView() {
@@ -1656,10 +1782,13 @@ async function openObatForm(kode) {
     $('mObKategori').value = o.kategori || ''; $('mObUnit').value = o.unit || '';
     $('mObMin').value = o.min || 0; $('mObBeli').value = o.beli || 0; $('mObJual').value = o.jual || 0;
     $('mObNote').value = o.note || '';
+    $('mObOpenBox').style.display = 'none';
   } else {
     $('modalObatTitle').textContent = 'إضافة صنف';
     ['mObKode', 'mObNama', 'mObBarcode', 'mObKategori', 'mObUnit', 'mObNote'].forEach(f => $(f).value = '');
     $('mObKode').disabled = false; $('mObMin').value = 10; $('mObBeli').value = 0; $('mObJual').value = 0;
+    ['mObOpenQty', 'mObOpenBatch', 'mObOpenExp'].forEach(f => $(f).value = '');
+    $('mObOpenBox').style.display = '';
   }
   $('msgModal').className = 'msg';
 }
@@ -1668,6 +1797,16 @@ function closeObatForm() { $('modalObat').classList.remove('show'); $('msgModal'
 async function saveObat() {
   const kode = $('mObKode').value.trim(), nama = $('mObNama').value.trim();
   if (!kode || !nama) { showMsg('msgModal', 'الكود والاسم مطلوبين.', false); return; }
+  let openQty = 0, openBatch = '', openExp = '';
+  if (!editingKode) {
+    openQty = Number($('mObOpenQty').value) || 0;
+    openBatch = $('mObOpenBatch').value.trim();
+    if (openQty > 0 && $('mObOpenExp').value) {
+      const pe = parseManualDate($('mObOpenExp').value);
+      if (!pe) { showMsg('msgModal', 'صيغة تاريخ الانتهاء غلط.', false); return; }
+      openExp = fmtDate(pe);
+    }
+  }
   if (!editingKode && await dbGetObat(kode)) { showMsg('msgModal', 'الكود موجود بالفعل.', false); return; }
   try {
     await dbPutObat({
@@ -1676,7 +1815,11 @@ async function saveObat() {
       note: $('mObNote').value.trim(), aktif: true
     });
     clearCache();
-    showMsg('msgModal', editingKode ? 'تم التعديل.' : 'تم الإضافة.', true);
+    if (!editingKode && openQty > 0) {
+      await createOpeningTrx({ kode, nama }, openQty, openBatch, openExp);
+      clearCache();
+    }
+    showMsg('msgModal', editingKode ? 'تم التعديل.' : (openQty > 0 ? 'تم الإضافة مع الرصيد الافتتاحي.' : 'تم الإضافة.'), true);
     setTimeout(() => { closeObatForm(); refreshAll(); }, 600);
   } catch (err) { showMsg('msgModal', 'خطأ: ' + err.message, false); }
 }
@@ -1690,6 +1833,56 @@ async function deleteObat(kode) {
 async function deleteTrx(id) {
   if (!confirm('تأكيد حذف الحركة؟')) return;
   await dbDelTrx(id); clearCache(); refreshAll();
+}
+
+/* ═══ الرصيد الافتتاحي ═══ */
+function quickExpTo(id, months) { $(id).value = addMonths(new Date(), months); }
+
+async function createOpeningTrx(o, qty, batch, exp, dateStr, note) {
+  const nomor = await generateNomor('OPN', 'وارد');
+  await dbPutTrx({
+    nomor, tipe: 'وارد', kode: o.kode, nama: o.nama, jumlah: qty,
+    batch: batch || '', exp: exp || '', supplier: '', note: note || 'رصيد افتتاحي',
+    tanggal: (dateStr || todayStr()) + 'T' + nowTime(), user_email: CURRENT_USER
+  });
+  return nomor;
+}
+
+async function openOpening(kode) {
+  const o = (await getObats()).find(x => x.kode === kode);
+  if (!o) return;
+  $('oKode').value = o.kode;
+  $('oDrug').textContent = `${o.kode} — ${o.nama}`;
+  ['oQty', 'oBatch', 'oExp', 'oNote'].forEach(id => $(id).value = '');
+  setToday('oDate');
+  $('msgOpen').className = 'msg';
+  $('modalOpen').classList.add('show');
+}
+function closeOpening() { $('modalOpen').classList.remove('show'); }
+
+async function saveOpening(btn) {
+  const qty = Number($('oQty').value);
+  if (!qty || qty <= 0) { showMsg('msgOpen', 'اكتب كمية صحيحة.', false); return; }
+  let exp = '';
+  if ($('oExp').value) {
+    const pe = parseManualDate($('oExp').value);
+    if (!pe) { showMsg('msgOpen', 'صيغة تاريخ الانتهاء غلط.', false); return; }
+    exp = fmtDate(pe);
+  }
+  const pd = parseManualDate($('oDate').value || todayStr());
+  if (!pd) { showMsg('msgOpen', 'صيغة التاريخ غلط.', false); return; }
+  const o = (await getObats()).find(x => x.kode === $('oKode').value);
+  if (!o) { showMsg('msgOpen', 'الصنف مش موجود.', false); return; }
+
+  btn.disabled = true;
+  try {
+    await createOpeningTrx(o, qty, $('oBatch').value.trim(), exp, fmtDate(pd), $('oNote').value.trim());
+    clearCache();
+    closeOpening();
+    toast('تم تسجيل الرصيد الافتتاحي');
+    refreshAll();
+  } catch (err) { showMsg('msgOpen', 'خطأ: ' + err.message, false); }
+  btn.disabled = false;
 }
 
 /* ═══ تسجيل وارد / صادر ═══ */
@@ -1918,7 +2111,7 @@ async function autoBackupTick() {
 setInterval(autoBackupTick, 30000);
 setTimeout(autoBackupTick, 4000);
 initAutoBackupUI();
-renderBackups();
+/* renderBackups() بتتنفذ بس لما تفتح تاب النسخ الاحتياطي (من refreshAll) */
 
 /* ═══ عنوان الصفحة والتاريخ ═══ */
 (function () {
