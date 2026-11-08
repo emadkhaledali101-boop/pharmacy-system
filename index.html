@@ -523,6 +523,7 @@
   .st-sel { min-height: 34px; padding: 4px 10px 4px 32px; font-size: 13px; font-weight: 600; width: auto; min-width: 104px; border-radius: 9px; background-position: left 9px center; background-size: 14px; }
   .st-sel.s-ok { color: var(--green); border-color: var(--green); }
   .st-sel.s-no { color: var(--amber); border-color: var(--amber-line); }
+  .izn-inp { min-height: 34px; padding: 4px 10px; font-size: 13px; font-weight: 600; width: 140px; border-radius: 9px; }
   .exp-edit-row { margin-bottom: 4px; }
   #eList .batch-item input[type="date"] { margin-top: 0; }
 
@@ -695,6 +696,8 @@
         <button type="button" onclick="setYesterday('inTanggal')">أمس</button>
         <button type="button" onclick="setTomorrow('inTanggal')">غداً</button>
       </div>
+      <label>رقم الإذن</label>
+      <input id="inIzn" placeholder="رقم إذن الإضافة">
       <label>المورد</label>
       <input id="inSupplier" placeholder="شركة النيل للأدوية">
       <label>ملاحظة</label>
@@ -717,6 +720,8 @@
       <input id="outTujuan" placeholder="مريض أحمد">
       <label>رقم الروشتة</label>
       <input id="outResep" placeholder="RX-2025-001">
+      <label>رقم الإذن</label>
+      <input id="outIzn" placeholder="رقم إذن الصرف">
       <div class="row">
         <div>
           <label>أمر دفع</label>
@@ -749,14 +754,14 @@
         <div><label>من تاريخ</label><input id="logInFrom" type="date" oninput="renderLogIn()"></div>
         <div><label>إلى تاريخ</label><input id="logInTo" type="date" oninput="renderLogIn()"></div>
       </div>
-      <div class="search-bar" style="margin-top:8px"><input id="logInSearch" placeholder="ابحث باسم الدوا..." oninput="renderLogIn()"></div>
+      <div class="search-bar" style="margin-top:8px"><input id="logInSearch" placeholder="ابحث باسم الدوا أو رقم الإذن..." oninput="renderLogIn()"></div>
       <div class="btn-row" style="margin-top:12px">
         <button class="btn-excel" onclick="exportLogInExcel()">تصدير Excel</button>
         <button class="btn-print" onclick="printSection('logInTable')">طباعة</button>
       </div>
       <div class="scroll-x" id="logInTable">
         <table>
-          <thead><tr><th>رقم</th><th>الدوا</th><th>الكمية</th><th>الباتش</th><th>الانتهاء</th><th>المورد</th><th>تاريخ الاستلام</th><th>المستخدم</th><th>ملاحظة</th><th class="noprint">إجراء</th></tr></thead>
+          <thead><tr><th>رقم</th><th>الدوا</th><th>رقم الإذن</th><th>الكمية</th><th>الباتش</th><th>الانتهاء</th><th>المورد</th><th>تاريخ الاستلام</th><th>المستخدم</th><th>ملاحظة</th><th class="noprint">إجراء</th></tr></thead>
           <tbody id="tbodyLogIn"></tbody>
         </table>
       </div>
@@ -772,14 +777,14 @@
         <div><label>من تاريخ</label><input id="logOutFrom" type="date" oninput="renderLogOut()"></div>
         <div><label>إلى تاريخ</label><input id="logOutTo" type="date" oninput="renderLogOut()"></div>
       </div>
-      <div class="search-bar" style="margin-top:8px"><input id="logOutSearch" placeholder="ابحث باسم الدوا..." oninput="renderLogOut()"></div>
+      <div class="search-bar" style="margin-top:8px"><input id="logOutSearch" placeholder="ابحث باسم الدوا أو رقم الإذن..." oninput="renderLogOut()"></div>
       <div class="btn-row" style="margin-top:12px">
         <button class="btn-excel" onclick="exportLogOutExcel()">تصدير Excel</button>
         <button class="btn-print" onclick="printSection('logOutTable')">طباعة</button>
       </div>
       <div class="scroll-x" id="logOutTable">
         <table>
-          <thead><tr><th>رقم</th><th>الدوا</th><th>الكمية</th><th>الجهة</th><th>الروشتة</th><th>أمر دفع</th><th>تعهد</th><th>تاريخ الصرف</th><th>المستخدم</th><th>ملاحظة</th><th class="noprint">إجراء</th></tr></thead>
+          <thead><tr><th>رقم</th><th>الدوا</th><th>رقم الإذن</th><th>الكمية</th><th>الجهة</th><th>الروشتة</th><th>أمر دفع</th><th>تعهد</th><th>تاريخ الصرف</th><th>المستخدم</th><th>ملاحظة</th><th class="noprint">إجراء</th></tr></thead>
           <tbody id="tbodyLogOut"></tbody>
         </table>
       </div>
@@ -1060,6 +1065,7 @@
         </div>
       </div>
     </div>
+    <label>رقم الإذن</label><input id="mtIzn">
     <label>ملاحظة</label><input id="mtNote">
     <div class="row" style="margin-top:16px">
       <button class="btn green" onclick="saveTrxEdit(this)">حفظ التعديل</button>
@@ -1200,9 +1206,10 @@ async function dbPutTrx(obj) {
   /* لو عمود اختياري لسه مش متضاف في Supabase — نسجل الحركة من غيره ونبلغ المستخدم */
   const optional = { user_email: 'الإيميل ما اتسجلش — ضيف عمود user_email في Supabase (SQL Editor)',
                      amr_dafa: 'أمر الدفع ما اتسجلش — ضيف عمود amr_dafa في Supabase (SQL Editor)',
-                     taahud: 'التعهد ما اتسجلش — ضيف عمود taahud في Supabase (SQL Editor)' };
+                     taahud: 'التعهد ما اتسجلش — ضيف عمود taahud في Supabase (SQL Editor)',
+                     izn_no: 'رقم الإذن ما اتسجلش — ضيف عمود izn_no في Supabase (SQL Editor)' };
   const warns = [];
-  for (let i = 0; i < 3 && error; i++) {
+  for (let i = 0; i < 4 && error; i++) {
     const col = Object.keys(optional).find(c => rest[c] !== undefined && new RegExp(c, 'i').test(error.message));
     if (!col) break;
     delete rest[col]; warns.push(optional[col]);
@@ -1324,6 +1331,24 @@ function stBadge(v) {
   return '-';
 }
 
+/* خانة رقم الإذن جوه سجل الوارد / الصرف — بتحفظ أول ما تكتب وتخرج من الخانة أو تدوس Enter */
+function iznInput(t) {
+  return `<input class="izn-inp" data-id="${t.id}" data-old="${escHtml(t.izn_no || '')}" value="${escHtml(t.izn_no || '')}" placeholder="أضف رقم الإذن" onchange="setTrxIzn(this)">`;
+}
+async function setTrxIzn(inp) {
+  const id = Number(inp.dataset.id), val = inp.value.trim();
+  if (val === (inp.dataset.old || '')) return;
+  inp.disabled = true;
+  try {
+    await dbUpdateTrx(id, { izn_no: val });
+    clearCache();
+    toast('تم حفظ رقم الإذن');
+  } catch (err) {
+    alert('خطأ: ' + err.message);
+  }
+  refreshAll();
+}
+
 /* قائمة اختيار (تم / لم يتم) جوه سجل الصرف — بتحفظ فوراً وتشتغل على السجلات القديمة والجديدة */
 function stSelect(t, field) {
   const v = t[field] || '';
@@ -1433,7 +1458,7 @@ function nearExpiryList(trx, months) {
       if (b.remaining <= 0 || !b.exp) return;
       const d = parseToDate(b.exp);
       if (!d) return;
-      if (d <= limit) result.push({ kode, nama: b.nama, batch: b.batch, exp: b.exp, remaining: b.remaining, days: Math.ceil((d - today) / 864e5) });
+      if (d <= limit) result.push({ kode, nama: b.nama, batch: b.batch, izn: b.izn_no || '', exp: b.exp, remaining: b.remaining, days: Math.ceil((d - today) / 864e5) });
     });
   });
   return result.sort((a, b) => a.days - b.days);
@@ -1487,7 +1512,7 @@ function renderPendAlerts(trx) {
   el.innerHTML = list.map(x => `
     <div class="alert-banner danger">
       <strong>${escHtml(x.t.nama)} — ${escHtml(x.t.nomor)}</strong>
-      الجهة: ${escHtml(x.t.tujuan || '-')} · الروشتة: ${escHtml(x.t.resep || '-')} · الكمية: ${x.t.jumlah} · تاريخ الصرف: ${escHtml((x.t.tanggal || '').slice(0, 10))}
+      رقم الإذن: ${escHtml(x.t.izn_no || '-')} · الجهة: ${escHtml(x.t.tujuan || '-')} · الروشتة: ${escHtml(x.t.resep || '-')} · الكمية: ${x.t.jumlah} · تاريخ الصرف: ${escHtml((x.t.tanggal || '').slice(0, 10))}
       <div style="margin-top:6px">
         ${x.amr ? '<span class="badge expired" style="margin-inline-end:6px">أمر دفع: لم يتم</span>' : ''}
         ${x.taa ? '<span class="badge expired" style="margin-inline-end:6px">تعهد: لم يتم</span>' : ''}
@@ -1505,7 +1530,7 @@ function renderExpiryAlerts(trx) {
     if (x.days < 0) { cls = 'expired'; bannerCls = 'critical'; label = `منتهي منذ ${Math.abs(x.days)} يوم`; }
     else if (x.days <= 30) { cls = 'expired'; bannerCls = 'danger'; }
     return `<div class="alert-banner ${bannerCls}"><strong>${escHtml(x.nama)} — ${escHtml(x.kode)}</strong>
-      باتش: ${escHtml(x.batch || '-')} · انتهاء: ${escHtml(x.exp)} · متبقي: ${x.remaining}
+      باتش: ${escHtml(x.batch || '-')} · رقم الإذن: ${escHtml(x.izn || '-')} · انتهاء: ${escHtml(x.exp)} · متبقي: ${x.remaining}
       <span class="badge ${cls}" style="margin-inline-start:6px">${label}</span></div>`;
   }).join('');
 }
@@ -1540,7 +1565,7 @@ function filterLog(trx, tipe, pre) {
   let list = trx.filter(t => t.tipe === tipe).sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || '') || b.id - a.id);
   if (from) list = list.filter(t => (t.tanggal || '').slice(0, 10) >= from);
   if (to) list = list.filter(t => (t.tanggal || '').slice(0, 10) <= to);
-  if (q) list = list.filter(t => (t.nama || '').toLowerCase().includes(q));
+  if (q) list = list.filter(t => (t.nama || '').toLowerCase().includes(q) || (t.izn_no || '').toLowerCase().includes(q));
   return list;
 }
 const editBtn = t => `<button class="icon-btn edit" onclick="openTrxEdit(${t.id})">تعديل</button>`;
@@ -1550,7 +1575,7 @@ function renderLogIn(trx) {
   const list = filterLog(trx, 'وارد', 'logIn');
   $('tbodyLogIn').innerHTML = list.map(t => `
     <tr>
-      <td>${escHtml(t.nomor)}</td><td>${escHtml(t.nama)}</td><td>${t.jumlah}</td><td>${escHtml(t.batch || '-')}</td>
+      <td>${escHtml(t.nomor)}</td><td>${escHtml(t.nama)}</td><td>${iznInput(t)}</td><td>${t.jumlah}</td><td>${escHtml(t.batch || '-')}</td>
       <td>${escHtml(t.exp || '-')}</td><td>${escHtml(t.supplier || '-')}</td><td>${(t.tanggal || '').slice(0, 10)}</td>
       <td>${userCell(t)}</td><td class="wrap">${escHtml(t.note || '-')}</td><td class="noprint">${editBtn(t)}</td>
     </tr>`).join('');
@@ -1562,7 +1587,7 @@ function renderLogOut(trx) {
   const list = filterLog(trx, 'صادر', 'logOut');
   $('tbodyLogOut').innerHTML = list.map(t => `
     <tr>
-      <td>${escHtml(t.nomor)}</td><td>${escHtml(t.nama)}</td><td>${t.jumlah}</td><td>${escHtml(t.tujuan || '-')}</td>
+      <td>${escHtml(t.nomor)}</td><td>${escHtml(t.nama)}</td><td>${iznInput(t)}</td><td>${t.jumlah}</td><td>${escHtml(t.tujuan || '-')}</td>
       <td>${escHtml(t.resep || '-')}</td><td>${stSelect(t, 'amr_dafa')}</td><td>${stSelect(t, 'taahud')}</td><td>${(t.tanggal || '').slice(0, 10)}</td>
       <td>${userCell(t)}</td><td class="wrap">${escHtml(t.note || '-')}</td><td class="noprint">${editBtn(t)}</td>
     </tr>`).join('');
@@ -1583,6 +1608,7 @@ async function openTrxEdit(id) {
   $('mtQty').value = t.jumlah;
   $('mtDate').value = (t.tanggal || '').slice(0, 10);
   $('mtNote').value = t.note || '';
+  $('mtIzn').value = t.izn_no || '';
   $('mtBatch').value = t.batch || '';
   $('mtExp').value = t.exp || '';
   $('mtSupplier').value = t.supplier || '';
@@ -1624,6 +1650,8 @@ async function saveTrxEdit(btn) {
 
     const timePart = (t.tanggal || '').split('T')[1] || '00:00:00';
     const fields = { jumlah: qty, tanggal: fmtDate(pDate) + 'T' + timePart, note: $('mtNote').value.trim() };
+    const izn = $('mtIzn').value.trim();
+    if (izn !== (t.izn_no || '')) fields.izn_no = izn;
     if (isIn) {
       fields.batch = $('mtBatch').value.trim();
       fields.exp = exp;
@@ -1942,11 +1970,11 @@ async function exportAlertsExcel() {
     const outRows = [['الكود', 'الاسم', 'الفئة', 'الوحدة', 'الرصيد', 'الحد الأدنى']];
     obats.forEach(o => { if ((stokMap[o.kode] || 0) === 0) outRows.push([o.kode, o.nama, o.kategori || '', o.unit || '', 0, o.min || 0]); });
 
-    const expRows = [['الكود', 'الاسم', 'الباتش', 'تاريخ الانتهاء', 'الكمية المتبقية', 'الأيام المتبقية', 'الحالة']];
-    nearExpiryList(trx, 6).forEach(x => expRows.push([x.kode, x.nama, x.batch || '', x.exp, x.remaining, x.days, x.days < 0 ? 'منتهي' : x.days <= 30 ? 'خلال 30 يوم' : 'خلال 6 شهور']));
+    const expRows = [['الكود', 'الاسم', 'الباتش', 'رقم الإذن', 'تاريخ الانتهاء', 'الكمية المتبقية', 'الأيام المتبقية', 'الحالة']];
+    nearExpiryList(trx, 6).forEach(x => expRows.push([x.kode, x.nama, x.batch || '', x.izn || '', x.exp, x.remaining, x.days, x.days < 0 ? 'منتهي' : x.days <= 30 ? 'خلال 30 يوم' : 'خلال 6 شهور']));
 
-    const pendRows = [['رقم', 'الدوا', 'الكمية', 'الجهة', 'الروشتة', 'تاريخ الصرف', 'أيام التأخير', 'أمر دفع', 'تعهد']];
-    pendingList(trx).forEach(x => pendRows.push([x.t.nomor, x.t.nama, x.t.jumlah, x.t.tujuan || '', x.t.resep || '', (x.t.tanggal || '').slice(0, 10), x.days, x.t.amr_dafa || '', x.t.taahud || '']));
+    const pendRows = [['رقم', 'الدوا', 'رقم الإذن', 'الكمية', 'الجهة', 'الروشتة', 'تاريخ الصرف', 'أيام التأخير', 'أمر دفع', 'تعهد']];
+    pendingList(trx).forEach(x => pendRows.push([x.t.nomor, x.t.nama, x.t.izn_no || '', x.t.jumlah, x.t.tujuan || '', x.t.resep || '', (x.t.tanggal || '').slice(0, 10), x.days, x.t.amr_dafa || '', x.t.taahud || '']));
 
     downloadMultiXLSX(`alerts-${todayCompact()}.xlsx`, [
       { name: 'الأصناف الخالصة', rows: outRows },
@@ -1968,14 +1996,14 @@ async function exportInventoryExcel() {
 }
 async function exportLogInExcel() {
   const list = filterLog(await getTrx(), 'وارد', 'logIn');
-  const rows = [['رقم', 'الدوا', 'الكمية', 'الباتش', 'الانتهاء', 'المورد', 'تاريخ الاستلام', 'المستخدم', 'ملاحظة']];
-  list.forEach(t => rows.push([t.nomor, t.nama, t.jumlah, t.batch || '', t.exp || '', t.supplier || '', (t.tanggal || '').slice(0, 10), t.user_email || '', t.note || '']));
+  const rows = [['رقم', 'الدوا', 'رقم الإذن', 'الكمية', 'الباتش', 'الانتهاء', 'المورد', 'تاريخ الاستلام', 'المستخدم', 'ملاحظة']];
+  list.forEach(t => rows.push([t.nomor, t.nama, t.izn_no || '', t.jumlah, t.batch || '', t.exp || '', t.supplier || '', (t.tanggal || '').slice(0, 10), t.user_email || '', t.note || '']));
   downloadCSV(`log-in-${todayCompact()}.csv`, rows, 'سجل الوارد');
 }
 async function exportLogOutExcel() {
   const list = filterLog(await getTrx(), 'صادر', 'logOut');
-  const rows = [['رقم', 'الدوا', 'الكمية', 'الجهة', 'الروشتة', 'أمر دفع', 'تعهد', 'تاريخ الصرف', 'المستخدم', 'ملاحظة']];
-  list.forEach(t => rows.push([t.nomor, t.nama, t.jumlah, t.tujuan || '', t.resep || '', t.amr_dafa || '', t.taahud || '', (t.tanggal || '').slice(0, 10), t.user_email || '', t.note || '']));
+  const rows = [['رقم', 'الدوا', 'رقم الإذن', 'الكمية', 'الجهة', 'الروشتة', 'أمر دفع', 'تعهد', 'تاريخ الصرف', 'المستخدم', 'ملاحظة']];
+  list.forEach(t => rows.push([t.nomor, t.nama, t.izn_no || '', t.jumlah, t.tujuan || '', t.resep || '', t.amr_dafa || '', t.taahud || '', (t.tanggal || '').slice(0, 10), t.user_email || '', t.note || '']));
   downloadCSV(`log-out-${todayCompact()}.csv`, rows, 'سجل الصرف');
 }
 function exportReportExcel() {
@@ -2213,11 +2241,12 @@ async function submitMasuk(btn) {
       nomor, tipe: 'وارد', kode, nama: o.nama, jumlah,
       batch: $('inBatch').value.trim(), exp,
       supplier: $('inSupplier').value.trim(), note: $('inNote').value.trim(),
+      izn_no: $('inIzn').value.trim() || undefined,
       tanggal: fmtDate(pTgl) + 'T' + nowTime(), user_email: CURRENT_USER
     });
     clearCache();
     showMsg('msgMasuk', 'تم تسجيل الوارد: ' + nomor, true);
-    ['inJumlah', 'inBatch', 'inExp', 'inSupplier', 'inNote'].forEach(id => $(id).value = '');
+    ['inJumlah', 'inBatch', 'inExp', 'inSupplier', 'inNote', 'inIzn'].forEach(id => $(id).value = '');
     setToday('inTanggal');
     refreshAll();
   } catch (err) { showMsg('msgMasuk', 'خطأ: ' + err.message, false); }
@@ -2243,11 +2272,12 @@ async function submitKeluar(btn) {
       nomor, tipe: 'صادر', kode, nama: o.nama, jumlah,
       tujuan: $('outTujuan').value.trim(), resep: $('outResep').value.trim(), note: $('outNote').value.trim(),
       amr_dafa: $('outAmr').value, taahud: $('outTaahud').value,
+      izn_no: $('outIzn').value.trim() || undefined,
       tanggal: fmtDate(pTgl) + 'T' + nowTime(), user_email: CURRENT_USER
     });
     clearCache();
     showMsg('msgKeluar', 'تم تسجيل الصادر: ' + nomor, true);
-    ['outJumlah', 'outTujuan', 'outResep', 'outNote'].forEach(id => $(id).value = '');
+    ['outJumlah', 'outTujuan', 'outResep', 'outNote', 'outIzn'].forEach(id => $(id).value = '');
     $('outAmr').value = 'لم يتم'; $('outTaahud').value = 'لم يتم';
     setToday('outTanggal');
     refreshAll();
