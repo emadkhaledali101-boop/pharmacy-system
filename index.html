@@ -899,6 +899,10 @@
 
   <!-- التنبيهات -->
   <section id="alerts" class="panel">
+    <div class="card">
+      <h2>تصدير التنبيهات</h2>
+      <div class="btn-row"><button class="btn-excel" onclick="exportAlertsExcel()">تصدير التنبيهات Excel (خالصة + قريبة الانتهاء + أمر دفع/تعهد)</button></div>
+    </div>
     <div class="card"><h2>تنبيهات انتهاء الصلاحية</h2><div id="expiryAlerts"></div></div>
     <div class="card"><h2>تنبيهات نقص المخزون</h2><div id="stockAlerts"></div></div>
     <div class="card"><h2>تنبيهات أمر الدفع والتعهد</h2><div id="pendAlerts"></div></div>
@@ -1902,6 +1906,56 @@ function downloadCSV(filename, rows, sheetName) {
   a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
   a.download = filename; a.click();
 }
+/* تصدير ملف Excel بعدة شيتات (كل شيت منظم في خلايا) */
+function downloadMultiXLSX(filename, sheets) {
+  if (window.XLSX) {
+    try {
+      const wb = XLSX.utils.book_new();
+      wb.Workbook = { Views: [{ RTL: true }] };
+      sheets.forEach(sh => {
+        const data = sh.rows.map(r => r.map(c => (c === null || c === undefined) ? '' : c));
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        const maxCols = Math.max(1, ...data.map(r => r.length));
+        const widths = [];
+        for (let c = 0; c < maxCols; c++) {
+          let w = 8;
+          data.forEach(r => { if (r.length === maxCols) w = Math.max(w, String(r[c] ?? '').length + 4); });
+          widths.push({ wch: Math.min(w, 42) });
+        }
+        ws['!cols'] = widths;
+        XLSX.utils.book_append_sheet(wb, ws, String(sh.name).replace(/[\\\/\?\*\[\]:]/g, ' ').slice(0, 31));
+      });
+      XLSX.writeFile(wb, filename);
+      return;
+    } catch (e) { console.error('xlsx export failed, falling back to CSV', e); }
+  }
+  const all = [];
+  sheets.forEach(sh => { all.push([sh.name], ...sh.rows, []); });
+  downloadCSV(filename.replace(/\.xlsx$/i, '.csv'), all);
+}
+
+async function exportAlertsExcel() {
+  try {
+    const obats = await getObats(true), trx = await getTrx(true);
+    const stokMap = computeAllStocks(obats, trx);
+
+    const outRows = [['الكود', 'الاسم', 'الفئة', 'الوحدة', 'الرصيد', 'الحد الأدنى']];
+    obats.forEach(o => { if ((stokMap[o.kode] || 0) === 0) outRows.push([o.kode, o.nama, o.kategori || '', o.unit || '', 0, o.min || 0]); });
+
+    const expRows = [['الكود', 'الاسم', 'الباتش', 'تاريخ الانتهاء', 'الكمية المتبقية', 'الأيام المتبقية', 'الحالة']];
+    nearExpiryList(trx, 6).forEach(x => expRows.push([x.kode, x.nama, x.batch || '', x.exp, x.remaining, x.days, x.days < 0 ? 'منتهي' : x.days <= 30 ? 'خلال 30 يوم' : 'خلال 6 شهور']));
+
+    const pendRows = [['رقم', 'الدوا', 'الكمية', 'الجهة', 'الروشتة', 'تاريخ الصرف', 'أيام التأخير', 'أمر دفع', 'تعهد']];
+    pendingList(trx).forEach(x => pendRows.push([x.t.nomor, x.t.nama, x.t.jumlah, x.t.tujuan || '', x.t.resep || '', (x.t.tanggal || '').slice(0, 10), x.days, x.t.amr_dafa || '', x.t.taahud || '']));
+
+    downloadMultiXLSX(`alerts-${todayCompact()}.xlsx`, [
+      { name: 'الأصناف الخالصة', rows: outRows },
+      { name: 'قريبة الانتهاء', rows: expRows },
+      { name: 'أمر دفع وتعهد متأخر', rows: pendRows }
+    ]);
+  } catch (err) { alert('خطأ في التصدير: ' + err.message); }
+}
+
 async function exportInventoryExcel() {
   const obats = await getObats(), trx = await getTrx();
   const stokMap = computeAllStocks(obats, trx);
