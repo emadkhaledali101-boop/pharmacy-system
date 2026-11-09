@@ -2449,5 +2449,683 @@ initAutoBackupUI();
   }));
 })();
 </script>
+<!-- ═══ بحث سريع في خانات اختيار الصنف (يتطبق على أي select بيتعمله enhanceSelect) ═══ -->
+<style>
+  .ss-wrap { position: relative; }
+  .ss-list {
+    display: none; position: absolute; top: calc(100% + 4px); right: 0; left: 0; max-height: 260px; overflow-y: auto; z-index: 60;
+    background: var(--bg); border: 1px solid var(--brand); border-radius: 12px; box-shadow: 0 16px 40px rgba(0,0,0,.35);
+  }
+  .ss-list.open { display: block; }
+  .ss-it { padding: 10px 14px; cursor: pointer; font-size: 14px; font-weight: 500; color: var(--ink-2); border-bottom: 1px solid var(--line-2); }
+  .ss-it:last-child { border-bottom: none; }
+  .ss-it.act, .ss-it:hover { background: var(--brand-soft); color: var(--brand-d); }
+  .ss-it.sel { font-weight: 700; color: var(--ink); }
+  .ss-none { padding: 14px; text-align: center; color: var(--muted); font-size: 13.5px; }
+</style>
+<script>
+function enhanceSelect(sel) {
+  if (!sel || sel._ss) return;
+  sel._ss = true;
+  const wrap = document.createElement('div'); wrap.className = 'ss-wrap';
+  const inp = document.createElement('input'); inp.type = 'text'; inp.className = 'ss-inp';
+  inp.setAttribute('autocomplete', 'off'); inp.spellcheck = false;
+  const list = document.createElement('div'); list.className = 'ss-list';
+  sel.parentNode.insertBefore(wrap, sel);
+  wrap.appendChild(inp); wrap.appendChild(list); wrap.appendChild(sel);
+  sel.style.display = 'none'; sel.tabIndex = -1;
+
+  const norm = s => String(s || '').toLowerCase().replace(/[أإآ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه').replace(/[ً-ْ]/g, '').trim();
+  let shown = [], act = -1;
+
+  function syncText() {
+    const o = sel.options[sel.selectedIndex];
+    const ph = [...sel.options].find(x => x.value === '');
+    inp.placeholder = (sel.dataset.ssEmptyPh && ph) ? ph.textContent : 'ابحث باسم الصنف أو الكود...';
+    inp.value = (o && o.value !== '') ? o.textContent : '';
+  }
+  function setAct(i) {
+    act = i;
+    [...list.children].forEach((el, k) => el.classList.toggle('act', k === i));
+    const el = list.children[i]; if (el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
+  }
+  function render(q) {
+    const words = norm(q).split(/\s+/).filter(Boolean);
+    shown = [...sel.options].filter(o => {
+      if (o.value === '') return !words.length && !!sel.dataset.ssEmptyPh;
+      const t = norm(o.textContent);
+      return words.every(w => t.includes(w));
+    });
+    if (!shown.length) { list.innerHTML = '<div class="ss-none">مفيش نتائج</div>'; act = -1; list.classList.add('open'); return; }
+    list.innerHTML = shown.map((o, i) => `<div class="ss-it${o.value === sel.value ? ' sel' : ''}" data-i="${i}">${escHtml(o.textContent)}</div>`).join('');
+    list.classList.add('open');
+    setAct(shown.length && words.length ? 0 : -1);
+  }
+  function close() { list.classList.remove('open'); act = -1; }
+  function pick(i) {
+    const o = shown[i]; if (!o) return;
+    sel.value = o.value; syncText(); close();
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  inp.addEventListener('focus', () => { inp.select(); render(''); });
+  inp.addEventListener('click', () => { if (!list.classList.contains('open')) { inp.select(); render(''); } });
+  inp.addEventListener('input', () => render(inp.value));
+  inp.addEventListener('blur', () => { close(); syncText(); });
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); if (!list.classList.contains('open')) render(inp.value); else if (shown.length) setAct(Math.min(shown.length - 1, act + 1)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); if (shown.length) setAct(Math.max(0, act - 1)); }
+    else if (e.key === 'Enter') { if (list.classList.contains('open')) { e.preventDefault(); if (shown.length) pick(act >= 0 ? act : 0); } }
+    else if (e.key === 'Escape') { close(); syncText(); inp.blur(); }
+  });
+  list.addEventListener('mousedown', e => e.preventDefault());
+  list.addEventListener('click', e => { const el = e.target.closest('.ss-it'); if (el) pick(Number(el.dataset.i)); });
+
+  /* لما القايمة تتبدّل (refreshAll / renderConsumption) نحدّث النص الظاهر */
+  new MutationObserver(syncText).observe(sel, { childList: true });
+  syncText();
+}
+
+/* فلتر "الصنف" في شاشة معدل الاستهلاك */
+(function () { const c = document.getElementById('cItem'); if (c) { c.dataset.ssEmptyPh = '1'; enhanceSelect(c); } })();
+</script>
+
+<!-- ═══════════════════════════════════════════════════════════
+     تعديل: أكتر من صنف في إذن واحد (وارد / صادر)
+     الصق الكتلة دي كلها في آخر الملف، قبل </body> مباشرة (بعد آخر </script>)
+     عشان ترجع للشكل القديم: امسح الكتلة دي بس
+     ═══════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  let _itN = 0;
+  const BOX = { in: 'inItems', out: 'outItems' };
+  const CNT = { in: 'inCount', out: 'outCount' };
+
+  /* قائمة الأصناف بتتاخد من القائمة المخفية اللي refreshAll بيملاها */
+  function optsHtml() {
+    const src = $('inKode');
+    return '<option value="">— اختار الصنف —</option>' + (src ? src.innerHTML : '');
+  }
+  function rowsOf(kind) { return [...document.querySelectorAll('#' + BOX[kind] + ' .it-row')]; }
+
+  function renumber(kind) {
+    const rows = rowsOf(kind);
+    rows.forEach((r, i) => { r.querySelector('.it-title').textContent = 'صنف رقم ' + (i + 1); });
+    const c = $(CNT[kind]); if (c) c.textContent = 'عدد الأصناف في الإذن: ' + rows.length;
+  }
+
+  window.addItemRow = function (kind) {
+    const box = $(BOX[kind]); if (!box) return;
+    const n = ++_itN;
+    const d = document.createElement('div');
+    d.className = 'batch-item it-row';
+    let extra;
+    if (kind === 'in') {
+      extra = `
+        <div class="row">
+          <div><label>الكمية</label><input class="it-qty" type="number" min="1" inputmode="numeric" placeholder="200"></div>
+          <div><label>رقم الباتش</label><input class="it-batch" placeholder="BATCH-2510A"></div>
+        </div>
+        <label>تاريخ الانتهاء</label>
+        <input class="it-exp" id="itExp${n}" type="date">
+        <div class="quick-date">
+          <button type="button" onclick="quickExpTo('itExp${n}',6)">+6 شهور</button>
+          <button type="button" onclick="quickExpTo('itExp${n}',12)">+سنة</button>
+          <button type="button" onclick="quickExpTo('itExp${n}',24)">+سنتين</button>
+          <button type="button" onclick="quickExpTo('itExp${n}',36)">+3 سنين</button>
+        </div>`;
+    } else {
+      extra = `
+        <label>الكمية</label>
+        <input class="it-qty" type="number" min="1" inputmode="numeric" placeholder="30">
+        <div class="hint it-hint"></div>`;
+    }
+    d.innerHTML = `
+      <div class="batch-head"><strong class="it-title"></strong>
+        <button type="button" class="icon-btn del" onclick="removeItemRow(this,'${kind}')">حذف الصنف</button></div>
+      <label style="margin-top:0">الدوا</label>
+      <select class="it-kode" onchange="itemKodeChanged(this)">${optsHtml()}</select>
+      ${extra}`;
+    box.appendChild(d);
+    enhanceSelect(d.querySelector('.it-kode'));
+    renumber(kind);
+  };
+
+  window.removeItemRow = function (btn, kind) {
+    const row = btn.closest('.it-row'); if (row) row.remove();
+    if (!rowsOf(kind).length) window.addItemRow(kind); else renumber(kind);
+  };
+
+  window.itemKodeChanged = async function (sel) {
+    const h = sel.closest('.it-row').querySelector('.it-hint'); if (!h) return;
+    if (!sel.value) { h.textContent = ''; return; }
+    try { h.textContent = 'المتاح حالياً: ' + computeBatches(await getTrx(), sel.value).stok; } catch (e) {}
+  };
+
+  function syncOptions() {
+    const o = optsHtml();
+    document.querySelectorAll('.it-kode').forEach(s => { const p = s.value; s.innerHTML = o; if (p) s.value = p; });
+  }
+
+  /* ─── بناء النموذجين ─── */
+  function build() {
+    const mc = document.querySelector('#masuk .card'), kc = document.querySelector('#keluar .card');
+    if (!mc || !kc) return;
+
+    mc.innerHTML = `
+      <h2>تسجيل وارد</h2>
+      <div class="row">
+        <div><label>رقم الإذن</label><input id="inIzn" placeholder="رقم إذن الإضافة"></div>
+        <div><label>المورد</label><input id="inSupplier" placeholder="شركة النيل للأدوية"></div>
+      </div>
+      <label>تاريخ الاستلام</label>
+      <input id="inTanggal" type="date">
+      <div class="quick-date">
+        <button type="button" onclick="setToday('inTanggal')">اليوم</button>
+        <button type="button" onclick="setYesterday('inTanggal')">أمس</button>
+        <button type="button" onclick="setTomorrow('inTanggal')">غداً</button>
+      </div>
+      <label>ملاحظة (على الإذن كله)</label>
+      <input id="inNote" placeholder="اختياري">
+      <div style="margin-top:20px;font-weight:700;color:var(--ink)">الأصناف في الإذن</div>
+      <div class="hint" id="inCount"></div>
+      <div id="inItems" style="margin-top:12px"></div>
+      <button type="button" class="btn gray" style="margin-top:0" onclick="addItemRow('in')">+ إضافة صنف تاني</button>
+      <button class="btn green" onclick="submitMasuk(this)">تسجيل الوارد</button>
+      <div id="msgMasuk" class="msg"></div>
+      <div style="display:none"><select id="inKode"></select></div>`;
+
+    kc.innerHTML = `
+      <h2>تسجيل صادر</h2>
+      <div class="row">
+        <div><label>رقم الإذن</label><input id="outIzn" placeholder="رقم إذن الصرف"></div>
+        <div><label>رقم الروشتة</label><input id="outResep" placeholder="RX-2025-001"></div>
+      </div>
+      <label>الجهة / المريض</label>
+      <input id="outTujuan" placeholder="مريض أحمد">
+      <div class="row">
+        <div>
+          <label>أمر دفع</label>
+          <select id="outAmr"><option value="لم يتم" selected>لم يتم</option><option value="تم">تم</option></select>
+        </div>
+        <div>
+          <label>تعهد</label>
+          <select id="outTaahud"><option value="لم يتم" selected>لم يتم</option><option value="تم">تم</option></select>
+        </div>
+      </div>
+      <label>تاريخ الصرف</label>
+      <input id="outTanggal" type="date">
+      <div class="quick-date">
+        <button type="button" onclick="setToday('outTanggal')">اليوم</button>
+        <button type="button" onclick="setYesterday('outTanggal')">أمس</button>
+        <button type="button" onclick="setTomorrow('outTanggal')">غداً</button>
+      </div>
+      <label>ملاحظة (على الإذن كله)</label>
+      <input id="outNote" placeholder="اختياري">
+      <div style="margin-top:20px;font-weight:700;color:var(--ink)">الأصناف في الإذن</div>
+      <div class="hint" id="outCount"></div>
+      <div id="outItems" style="margin-top:12px"></div>
+      <button type="button" class="btn gray" style="margin-top:0" onclick="addItemRow('out')">+ إضافة صنف تاني</button>
+      <button class="btn red" onclick="submitKeluar(this)">تسجيل الصادر</button>
+      <div id="msgKeluar" class="msg"></div>
+      <div style="display:none"><select id="outKode"></select><div id="stockHint"></div></div>`;
+
+    setToday('inTanggal'); setToday('outTanggal');
+    window.addItemRow('in'); window.addItemRow('out');
+  }
+
+  /* ─── تسجيل الوارد: كل الأصناف بنفس رقم الإذن ─── */
+  window.submitMasuk = async function (btn) {
+    const M = 'msgMasuk';
+    const pTgl = parseManualDate($('inTanggal').value.trim() || todayStr());
+    if (!pTgl) { showMsg(M, 'صيغة تاريخ الاستلام غلط.', false); return; }
+    const obats = await getObats(true);
+    const items = []; let i = 0;
+    for (const row of rowsOf('in')) {
+      i++;
+      const kode = row.querySelector('.it-kode').value;
+      const qty = Number(row.querySelector('.it-qty').value);
+      const batch = row.querySelector('.it-batch').value.trim();
+      const expRaw = row.querySelector('.it-exp').value.trim();
+      if (!kode && !qty && !batch && !expRaw) continue; /* صف فاضي بيتخطى */
+      if (!kode || !qty || qty <= 0) { showMsg(M, `صنف رقم ${i}: اختار الدوا واكتب كمية صحيحة.`, false); return; }
+      let exp = '';
+      if (expRaw) {
+        const p = parseManualDate(expRaw);
+        if (!p) { showMsg(M, `صنف رقم ${i}: صيغة تاريخ الانتهاء غلط.`, false); return; }
+        exp = fmtDate(p);
+      }
+      const o = obats.find(x => x.kode === kode);
+      if (!o) { showMsg(M, `صنف رقم ${i}: الصنف مش موجود.`, false); return; }
+      items.push({ row, o, qty, batch, exp });
+    }
+    if (!items.length) { showMsg(M, 'ضيف صنف واحد على الأقل.', false); return; }
+
+    const izn = $('inIzn').value.trim(), supplier = $('inSupplier').value.trim(), note = $('inNote').value.trim();
+    btn.disabled = true;
+    const done = [];
+    try {
+      for (const it of items) {
+        const nomor = await generateNomor('IN', 'وارد');
+        await dbPutTrx({
+          nomor, tipe: 'وارد', kode: it.o.kode, nama: it.o.nama, jumlah: it.qty,
+          batch: it.batch, exp: it.exp, supplier, note,
+          izn_no: izn || undefined,
+          tanggal: fmtDate(pTgl) + 'T' + nowTime(), user_email: CURRENT_USER
+        });
+        clearCache(); done.push(it);
+      }
+      rowsOf('in').forEach(r => r.remove());
+      ['inIzn', 'inSupplier', 'inNote'].forEach(id => $(id).value = '');
+      setToday('inTanggal');
+      window.addItemRow('in');
+      showMsg(M, `تم تسجيل ${done.length} صنف بإذن رقم ${izn || '—'}`, true);
+    } catch (err) {
+      clearCache();
+      done.forEach(it => it.row.remove()); /* الأصناف اللي اتسجلت بتتشال من النموذج عشان ما تتكررش */
+      if (!rowsOf('in').length) window.addItemRow('in'); else renumber('in');
+      showMsg(M, `خطأ: ${err.message}` + (done.length ? ` — اتسجل ${done.length} صنف قبل الخطأ، والباقي لسه في النموذج.` : ''), false);
+    }
+    btn.disabled = false;
+    refreshAll();
+  };
+
+  /* ─── تسجيل الصادر: كل الأصناف بنفس رقم الإذن ─── */
+  window.submitKeluar = async function (btn) {
+    const M = 'msgKeluar';
+    const pTgl = parseManualDate($('outTanggal').value.trim() || todayStr());
+    if (!pTgl) { showMsg(M, 'صيغة تاريخ الصرف غلط.', false); return; }
+    const obats = await getObats(true);
+    const items = []; let i = 0;
+    for (const row of rowsOf('out')) {
+      i++;
+      const kode = row.querySelector('.it-kode').value;
+      const qty = Number(row.querySelector('.it-qty').value);
+      if (!kode && !qty) continue;
+      if (!kode || !qty || qty <= 0) { showMsg(M, `صنف رقم ${i}: اختار الدوا واكتب كمية صحيحة.`, false); return; }
+      const o = obats.find(x => x.kode === kode);
+      if (!o) { showMsg(M, `صنف رقم ${i}: الصنف مش موجود.`, false); return; }
+      items.push({ row, o, qty });
+    }
+    if (!items.length) { showMsg(M, 'ضيف صنف واحد على الأقل.', false); return; }
+
+    /* فحص الرصيد (لو نفس الصنف اتكرر بتتجمع كمياته) */
+    const trxNow = await getTrx(true);
+    const need = {};
+    items.forEach(it => { need[it.o.kode] = (need[it.o.kode] || 0) + it.qty; });
+    for (const k of Object.keys(need)) {
+      const stok = computeBatches(trxNow, k).stok;
+      if (stok < need[k]) {
+        const nm = items.find(it => it.o.kode === k).o.nama;
+        showMsg(M, `الرصيد مش كافي لـ "${nm}". المتاح: ${stok} · المطلوب: ${need[k]}`, false);
+        return;
+      }
+    }
+
+    const izn = $('outIzn').value.trim();
+    const common = {
+      tujuan: $('outTujuan').value.trim(), resep: $('outResep').value.trim(), note: $('outNote').value.trim(),
+      amr_dafa: $('outAmr').value, taahud: $('outTaahud').value
+    };
+    btn.disabled = true;
+    const done = [];
+    try {
+      for (const it of items) {
+        const nomor = await generateNomor('OUT', 'صادر');
+        await dbPutTrx({
+          nomor, tipe: 'صادر', kode: it.o.kode, nama: it.o.nama, jumlah: it.qty, ...common,
+          izn_no: izn || undefined,
+          tanggal: fmtDate(pTgl) + 'T' + nowTime(), user_email: CURRENT_USER
+        });
+        clearCache(); done.push(it);
+      }
+      rowsOf('out').forEach(r => r.remove());
+      ['outTujuan', 'outResep', 'outNote', 'outIzn'].forEach(id => $(id).value = '');
+      $('outAmr').value = 'لم يتم'; $('outTaahud').value = 'لم يتم';
+      setToday('outTanggal');
+      window.addItemRow('out');
+      showMsg(M, `تم تسجيل ${done.length} صنف بإذن رقم ${izn || '—'}`, true);
+    } catch (err) {
+      clearCache();
+      done.forEach(it => it.row.remove());
+      if (!rowsOf('out').length) window.addItemRow('out'); else renumber('out');
+      showMsg(M, `خطأ: ${err.message}` + (done.length ? ` — اتسجل ${done.length} صنف قبل الخطأ، والباقي لسه في النموذج.` : ''), false);
+    }
+    btn.disabled = false;
+    refreshAll();
+  };
+
+  /* بعد كل تحديث للبيانات نحدّث قوائم الأصناف في الصفوف المفتوحة */
+  const _origRefresh = refreshAll;
+  refreshAll = async function () { await _origRefresh(); syncOptions(); };
+
+  build();
+})();
+</script>
+
+<!-- ═══ شاشة الإذونات: عرض الإذن كله (كل أصنافه) في كارت واحد ═══ -->
+<style>
+  .izn-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+  .izn-no { font-size: 18px; font-weight: 700; color: var(--ink); margin-inline-start: 8px; }
+  .izn-meta { font-size: 13px; color: var(--muted); margin-top: 6px; line-height: 1.9; }
+  .izn-meta b { color: var(--ink-2); font-weight: 600; }
+  .izn-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .izn-card .scroll-x { margin-top: 12px; }
+  .btn-row .btn-del { background: linear-gradient(110deg, #ff4d73, #ff8a5c); }
+</style>
+<script>
+(function () {
+  const ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/></svg>';
+  const norm = s => String(s || '').toLowerCase().replace(/[أإآ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه').replace(/[ً-ْ]/g, '').trim();
+
+  /* زر التاب */
+  const btn = document.createElement('button');
+  btn.dataset.tab = 'izn';
+  btn.innerHTML = ICON + '<span>الإذونات</span>';
+  document.querySelector('nav button[data-tab="logOut"]').insertAdjacentElement('afterend', btn);
+  btn.onclick = () => {
+    document.querySelectorAll('nav button').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+    btn.classList.add('active'); $('izn').classList.add('active');
+    window.scrollTo({ top: 0 });
+    const t = $('pageTitle'); if (t) t.textContent = 'الإذونات';
+    refreshAll();
+  };
+
+  /* الشاشة */
+  const sec = document.createElement('section');
+  sec.id = 'izn'; sec.className = 'panel';
+  sec.innerHTML = `
+    <div class="card">
+      <h2>الإذونات</h2>
+      <div class="row">
+        <div><label>النوع</label>
+          <select id="iznType" onchange="renderIznScreen()"><option value="">الكل</option><option value="وارد">وارد</option><option value="صادر">صادر</option></select></div>
+        <div><label>من تاريخ</label><input id="iznFrom" type="date" oninput="renderIznScreen()"></div>
+        <div><label>إلى تاريخ</label><input id="iznTo" type="date" oninput="renderIznScreen()"></div>
+      </div>
+      <div class="search-bar" style="margin-top:8px"><input id="iznSearch" placeholder="ابحث برقم الإذن أو اسم الدوا أو الجهة أو المورد..." oninput="renderIznScreen()"></div>
+      <label class="switch-line" style="margin-top:14px"><input type="checkbox" id="iznNoNum" onchange="renderIznScreen()"><span>إظهار الحركات اللي من غير رقم إذن</span></label>
+      <div class="btn-row" style="margin-top:12px"><button class="btn-excel" onclick="exportIznExcel()">تصدير Excel</button></div>
+      <div id="iznSummary" class="sum-line"></div>
+    </div>
+    <div id="iznList"></div>`;
+  $('logOut').insertAdjacentElement('afterend', sec);
+
+  let _groups = [];
+  const IZN_LIMIT = 100;
+
+  function uniq(items, f) { return [...new Set(items.map(t => t[f]).filter(Boolean))]; }
+  function firstOf(items, f) { const t = items.find(x => x[f]); return t ? t[f] : ''; }
+
+  function buildGroups(trx) {
+    const type = $('iznType').value, from = $('iznFrom').value, to = $('iznTo').value;
+    const q = norm($('iznSearch').value), showNo = $('iznNoNum').checked;
+    const map = new Map();
+    trx.forEach(t => {
+      if (type && t.tipe !== type) return;
+      const d = (t.tanggal || '').slice(0, 10);
+      if (from && d < from) return;
+      if (to && d > to) return;
+      const izn = (t.izn_no || '').trim();
+      if (!izn && !showNo) return;
+      const key = izn ? t.tipe + '|' + izn : t.tipe + '|#' + t.nomor;
+      let g = map.get(key);
+      if (!g) { g = { tipe: t.tipe, izn, items: [] }; map.set(key, g); }
+      g.items.push(t);
+    });
+    let arr = [...map.values()];
+    arr.forEach(g => {
+      g.items.sort((a, b) => (a.id || 0) - (b.id || 0));
+      g.date = g.items.map(t => (t.tanggal || '').slice(0, 10)).sort().pop() || '';
+      g.maxId = Math.max(...g.items.map(t => t.id || 0));
+      g.qty = g.items.reduce((s, t) => s + (Number(t.jumlah) || 0), 0);
+      g.supplier = firstOf(g.items, 'supplier'); g.tujuan = firstOf(g.items, 'tujuan'); g.resep = firstOf(g.items, 'resep');
+      g.amr = uniq(g.items, 'amr_dafa'); g.taa = uniq(g.items, 'taahud');
+      g.text = norm([g.izn, g.supplier, g.tujuan, g.resep, ...g.items.map(t => t.nama + ' ' + t.nomor + ' ' + (t.batch || ''))].join(' '));
+    });
+    if (q) { const words = q.split(/\s+/).filter(Boolean); arr = arr.filter(g => words.every(w => g.text.includes(w))); }
+    return arr.sort((a, b) => b.date.localeCompare(a.date) || b.maxId - a.maxId);
+  }
+
+  function stateBadge(label, vals) {
+    if (!vals.length) return '';
+    if (vals.length > 1) return `<span class="badge low">${label}: مختلط</span>`;
+    return `<span class="badge ${vals[0] === 'تم' ? 'ok' : 'low'}">${label}: ${escHtml(vals[0])}</span>`;
+  }
+
+  window.renderIznScreen = async function () {
+    if (!$('iznList')) return;
+    const trx = await getTrx();
+    _groups = buildGroups(trx);
+    const nIn = _groups.filter(g => g.tipe === 'وارد').length, nOut = _groups.length - nIn;
+    const nItems = _groups.reduce((s, g) => s + g.items.length, 0);
+    $('iznSummary').innerHTML = `<span class="pill">${_groups.length} إذن</span><span class="pill">وارد: ${nIn}</span><span class="pill">صادر: ${nOut}</span><span class="pill">${nItems} حركة</span>`;
+
+    if (!_groups.length) { $('iznList').innerHTML = '<div class="card"><div class="empty">مفيش إذونات مطابقة</div></div>'; return; }
+
+    const shown = _groups.slice(0, IZN_LIMIT);
+    $('iznList').innerHTML = shown.map((g, i) => {
+      const isIn = g.tipe === 'وارد';
+      const rows = g.items.map(t => `<tr>
+        <td>${escHtml(t.nomor)}</td><td>${escHtml(t.nama)}</td><td>${t.jumlah}</td>
+        ${isIn ? `<td>${escHtml(t.batch || '-')}</td><td>${escHtml(t.exp || '-')}</td>` : ''}
+        <td class="noprint">${editBtn(t)}<button class="icon-btn del" onclick="delIznItem(${t.id})">حذف</button></td></tr>`).join('');
+      const meta = isIn
+        ? `<b>تاريخ الاستلام:</b> ${escHtml(g.date)} · <b>المورد:</b> ${escHtml(g.supplier || '-')}`
+        : `<b>تاريخ الصرف:</b> ${escHtml(g.date)} · <b>الجهة:</b> ${escHtml(g.tujuan || '-')} · <b>الروشتة:</b> ${escHtml(g.resep || '-')}`;
+      return `<div class="card izn-card" id="iznCard${i}">
+        <div class="izn-head">
+          <div>
+            <span class="badge ${isIn ? 'in' : 'exit'}">${g.tipe}</span>
+            <span class="izn-no">${g.izn ? 'إذن رقم: ' + escHtml(g.izn) : 'بدون رقم إذن'}</span>
+            <div class="izn-meta">${meta}</div>
+            ${isIn ? '' : `<div class="izn-badges">${stateBadge('أمر دفع', g.amr)}${stateBadge('تعهد', g.taa)}</div>`}
+          </div>
+          <div class="sum-line" style="margin-top:0"><span class="pill">${g.items.length} صنف</span><span class="pill">إجمالي الكمية: ${g.qty}</span></div>
+        </div>
+        <div class="scroll-x"><table>
+          <thead><tr><th>رقم</th><th>الدوا</th><th>الكمية</th>${isIn ? '<th>الباتش</th><th>الانتهاء</th>' : ''}<th class="noprint">إجراء</th></tr></thead>
+          <tbody>${rows}</tbody></table></div>
+        <div class="btn-row noprint" style="margin-top:12px"><button class="btn-print" onclick="printSection('iznCard${i}')">طباعة الإذن</button><button class="btn-del" onclick="delIznAll(${i})">حذف الإذن كامل</button></div>
+      </div>`;
+    }).join('') + (_groups.length > IZN_LIMIT ? `<div class="hint" style="text-align:center">معروض أحدث ${IZN_LIMIT} إذن من ${_groups.length}. استخدم الفلاتر للوصول للباقي.</div>` : '');
+  };
+
+  window.exportIznExcel = function () {
+    if (!_groups.length) { alert('مفيش إذونات للتصدير'); return; }
+    const rows = [['النوع', 'رقم الإذن', 'التاريخ', 'المورد / الجهة', 'الروشتة', 'أمر دفع', 'تعهد', 'رقم الحركة', 'الدوا', 'الكمية', 'الباتش', 'الانتهاء']];
+    _groups.forEach(g => g.items.forEach(t => rows.push([
+      g.tipe, g.izn, (t.tanggal || '').slice(0, 10), g.tipe === 'وارد' ? (t.supplier || '') : (t.tujuan || ''),
+      t.resep || '', t.amr_dafa || '', t.taahud || '', t.nomor, t.nama, t.jumlah, t.batch || '', t.exp || ''
+    ])));
+    downloadCSV(`izn-${todayCompact()}.csv`, rows, 'الإذونات');
+  };
+
+  /* ─── حذف صنف من الإذن / حذف الإذن كامل ─── */
+  async function sbDeleteIds(ids) {
+    const { data, error } = await sb.from('transaksi').delete().in('id', ids).select();
+    if (error) throw error;
+    if (!data || data.length !== ids.length) throw new Error('الحذف ماتنفذش بالكامل — تأكد إن عندك صلاحية DELETE على جدول transaksi في Supabase.');
+  }
+  /* بيرجع أسماء الأصناف اللي رصيدها هيبقى بالسالب لو اتحذفت الحركات دي */
+  function negativeAfterRemoval(trx, removeIds) {
+    const net = {};
+    trx.forEach(t => { if (!removeIds.has(t.id)) net[t.kode] = (net[t.kode] || 0) + (t.tipe === 'وارد' ? 1 : -1) * (Number(t.jumlah) || 0); });
+    const bad = new Set();
+    trx.filter(t => removeIds.has(t.id)).forEach(t => { if ((net[t.kode] || 0) < 0) bad.add(t.nama); });
+    return [...bad];
+  }
+  async function doDelete(ids, confirmText) {
+    try {
+      const trx = await getTrx(true);
+      const bad = negativeAfterRemoval(trx, new Set(ids));
+      if (bad.length) { alert('مش ممكن تحذف — هيخلي رصيد: ' + bad.join('، ') + ' بالسالب (فيه صرف اتسجل على الكمية دي).'); return; }
+      if (!confirm(confirmText)) return;
+      await sbDeleteIds(ids);
+      clearCache();
+      toast('تم الحذف');
+    } catch (err) { alert('خطأ: ' + err.message); }
+    refreshAll();
+  }
+  window.delIznItem = async function (id) {
+    const t = (await getTrx()).find(x => x.id === id); if (!t) return;
+    await doDelete([id], `حذف الصنف "${t.nama}" (كمية ${t.jumlah}) من الإذن؟\nمش هتقدر تتراجع.`);
+  };
+  window.delIznAll = async function (i) {
+    const g = _groups[i]; if (!g) return;
+    const list = g.items.slice(0, 10).map(t => `• ${t.nama} × ${t.jumlah}`).join('\n') + (g.items.length > 10 ? `\n... و${g.items.length - 10} صنف تانيين` : '');
+    await doDelete(g.items.map(t => t.id), `حذف ${g.tipe === 'وارد' ? 'إذن الوارد' : 'إذن الصرف'} ${g.izn ? 'رقم ' + g.izn : ''} بالكامل (${g.items.length} صنف)؟\n${list}\nمش هتقدر تتراجع.`);
+  };
+
+  /* نربطها بتحديث الشاشات الأساسي */
+  const _prev = refreshAll;
+  refreshAll = async function () {
+    await _prev();
+    if (document.querySelector('.panel.active')?.id === 'izn') renderIznScreen();
+  };
+})();
+</script>
+
+<!-- ═══ تنبيهات: أمر الدفع/التعهد من أول يوم ومجمّعة بالإذن + تنبيه الصلاحية البارز في لوحة التحكم ═══ -->
+<style>
+  /* تنبيه قرب انتهاء الصلاحية — لوحة التحكم */
+  .exp-hero { border-radius: 20px; overflow: hidden; margin-bottom: 18px; border: 2px solid #ff4d73; background: var(--surface); box-shadow: 0 10px 40px -14px rgba(255,77,115,.65); }
+  .exp-hero.calm { border-color: #f0b04a; box-shadow: 0 10px 40px -16px rgba(240,176,74,.6); }
+  .exp-top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 16px 20px; color: #fff; background: linear-gradient(110deg, #e11d48, #ff6a3d); }
+  .exp-hero.calm .exp-top { background: linear-gradient(110deg, #c97d00, #f0b04a); color: #2b1a00; }
+  .exp-ico { width: 48px; height: 48px; border-radius: 50%; background: rgba(255,255,255,.24); display: flex; align-items: center; justify-content: center; flex: none; animation: expPulse 1.8s ease-out infinite; }
+  .exp-ico svg { width: 27px; height: 27px; }
+  .exp-title { font-size: 19px; font-weight: 700; line-height: 1.35; }
+  .exp-sub { font-size: 13px; font-weight: 600; margin-top: 2px; opacity: .95; }
+  .exp-all { margin-inline-start: auto; border: none; background: rgba(255,255,255,.95); color: #b4132f; font: inherit; font-weight: 700; font-size: 13px; padding: 9px 18px; border-radius: 999px; cursor: pointer; }
+  .exp-rows { padding: 6px 14px 14px; }
+  .exp-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 14px; margin-top: 8px; border-radius: 12px; border: 1px solid var(--line); border-inline-start: 6px solid var(--lc); background: var(--soft); }
+  .exp-row .nm { font-weight: 700; color: var(--ink); flex: 1 1 180px; }
+  .exp-row .mt { font-size: 12.5px; color: var(--muted); }
+  .exp-chip { padding: 4px 13px; border-radius: 999px; font-weight: 700; font-size: 12.5px; color: #fff; background: var(--lc); white-space: nowrap; }
+  .exp-row.lvl-x { --lc: #e11d48; } .exp-row.lvl-r { --lc: #f0531d; } .exp-row.lvl-o { --lc: #d98a06; } .exp-row.lvl-a { --lc: #a98400; }
+  .exp-more { text-align: center; font-size: 13px; color: var(--muted); margin-top: 10px; font-weight: 600; }
+  .stat.exp.hot { border-color: #ff4d73; }
+  .stat.exp.hot .num { color: #ff4d73; }
+  @keyframes expPulse { 0% { box-shadow: 0 0 0 0 rgba(255,255,255,.7); } 70% { box-shadow: 0 0 0 14px rgba(255,255,255,0); } 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); } }
+  @media (max-width: 600px) { .exp-title { font-size: 16.5px; } .exp-all { margin-inline-start: 0; width: 100%; } }
+</style>
+<script>
+(function () {
+  /* ─── 1) أمر الدفع / التعهد: يظهر من أول يوم (والتأخير بيتكتب بعدد الأيام) ─── */
+  pendingList = function (trx) {
+    const now = new Date();
+    const todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const res = [];
+    trx.forEach(t => {
+      if (t.tipe !== 'صادر') return;
+      const amr = t.amr_dafa === 'لم يتم', taa = t.taahud === 'لم يتم';
+      if (!amr && !taa) return;
+      const d = parseToDate((t.tanggal || '').slice(0, 10));
+      if (!d) return;
+      const days = Math.floor((todayMid - d) / 864e5);
+      if (days >= 0) res.push({ t, days, amr, taa });
+    });
+    return res.sort((a, b) => b.days - a.days);
+  };
+
+  /* تجميع حسب رقم الإذن: إذن فيه 5 أصناف = تنبيه واحد */
+  function pendingGroups(trx) {
+    const map = new Map();
+    pendingList(trx).forEach(x => {
+      const izn = (x.t.izn_no || '').trim();
+      const key = izn || '#' + x.t.nomor;
+      let g = map.get(key);
+      if (!g) { g = { izn, items: [], days: 0, amr: false, taa: false, date: '', tujuan: '', resep: '' }; map.set(key, g); }
+      g.items.push(x.t);
+      g.days = Math.max(g.days, x.days);
+      g.amr = g.amr || x.amr; g.taa = g.taa || x.taa;
+      g.tujuan = g.tujuan || x.t.tujuan || ''; g.resep = g.resep || x.t.resep || '';
+      const d = (x.t.tanggal || '').slice(0, 10); if (!g.date || d < g.date) g.date = d;
+    });
+    return [...map.values()].sort((a, b) => b.days - a.days);
+  }
+  function agoTxt(n) {
+    if (n === 1) return 'منذ يوم';
+    if (n === 2) return 'منذ يومين';
+    return n <= 10 ? `منذ ${n} أيام` : `منذ ${n} يوم`;
+  }
+  function pendMsg(g) {
+    return `لم يتم إحضار ${pendLabel(g)} ` + (g.days === 0 ? '— صُرف اليوم' : agoTxt(g.days));
+  }
+
+  renderPendAlerts = function (trx) {
+    const el = $('pendAlerts'); if (!el) return;
+    const groups = pendingGroups(trx);
+    if (!groups.length) { el.innerHTML = '<div class="empty">مفيش صرف مستني أمر دفع أو تعهد</div>'; return; }
+    el.innerHTML = groups.map(g => {
+      const late = g.days >= PEND_DAYS;
+      return `<div class="alert-banner danger">
+        <strong>${g.izn ? 'إذن رقم ' + escHtml(g.izn) : 'بدون رقم إذن'} — ${escHtml(g.tujuan || '-')}</strong>
+        الروشتة: ${escHtml(g.resep || '-')} · تاريخ الصرف: ${escHtml(g.date)} · ${g.items.length} صنف
+        <ul style="margin:8px 0 0;padding-inline-start:22px">${g.items.map(t => `<li>${escHtml(t.nama)} × ${t.jumlah}</li>`).join('')}</ul>
+        <div style="margin-top:8px">
+          ${g.amr ? `<span class="badge expired" style="margin-inline-end:6px">أمر دفع: لم يتم</span>` : ''}
+          ${g.taa ? `<span class="badge expired" style="margin-inline-end:6px">تعهد: لم يتم</span>` : ''}
+          <span class="badge out">${escHtml(pendMsg(g))}</span>
+        </div>
+      </div>`;
+    }).join('');
+  };
+
+  /* ─── 2) لوحة التحكم: تنبيه الصلاحية البارز + ملخص أمر الدفع/التعهد ─── */
+  const ICON_WARN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>';
+  const hero = document.createElement('div');
+  hero.id = 'dashExpHero';
+  $('dashboard').insertBefore(hero, $('dashboard').firstChild);
+  window.openAlertsTab = function () { const b = document.querySelector('nav button[data-tab="alerts"]'); if (b) b.click(); };
+
+  function renderExpHero(trx) {
+    const list = nearExpiryList(trx, 6);
+    const statBox = $('stExp') && $('stExp').closest('.stat');
+    if (statBox) statBox.classList.toggle('hot', list.length > 0);
+    if (!list.length) { hero.innerHTML = ''; return; }
+    const expired = list.filter(x => x.days < 0).length;
+    const m30 = list.filter(x => x.days >= 0 && x.days <= 30).length;
+    const m6 = list.length - expired - m30;
+    const calm = !expired && !m30;
+    const title = expired ? 'تحذير: فيه أدوية منتهية الصلاحية — تخلص منها فوراً!'
+      : m30 ? 'تنبيه: أدوية هتنتهي صلاحيتها خلال 30 يوم!'
+      : 'تنبيه: أدوية قربت تنتهي صلاحيتها (خلال 6 شهور)';
+    const sub = [expired ? `${expired} منتهي` : '', m30 ? `${m30} خلال 30 يوم` : '', m6 ? `${m6} خلال 6 شهور` : ''].filter(Boolean).join(' · ');
+    const SHOW = 8;
+    const rows = list.slice(0, SHOW).map(x => {
+      const lvl = x.days < 0 ? 'x' : x.days <= 30 ? 'r' : x.days <= 90 ? 'o' : 'a';
+      const chip = x.days < 0 ? `منتهي منذ ${Math.abs(x.days)} يوم` : x.days === 0 ? 'ينتهي اليوم' : `باقي ${x.days} يوم`;
+      return `<div class="exp-row lvl-${lvl}">
+        <span class="nm">${escHtml(x.nama)}</span>
+        <span class="mt">باتش: ${escHtml(x.batch || '-')} · الانتهاء: ${escHtml(x.exp)} · المتبقي: ${x.remaining}</span>
+        <span class="exp-chip">${chip}</span></div>`;
+    }).join('');
+    hero.innerHTML = `<div class="exp-hero ${calm ? 'calm' : ''}">
+      <div class="exp-top">
+        <div class="exp-ico">${ICON_WARN}</div>
+        <div><div class="exp-title">${title}</div><div class="exp-sub">${list.length} باتش — ${sub}</div></div>
+        <button class="exp-all" onclick="openAlertsTab()">عرض كل التنبيهات</button>
+      </div>
+      <div class="exp-rows">${rows}${list.length > SHOW ? `<div class="exp-more">+ ${list.length - SHOW} باتش تانيين في صفحة التنبيهات</div>` : ''}</div>
+    </div>`;
+  }
+
+  renderDashAlerts = function (trx) {
+    renderExpHero(trx);
+    const pend = pendingGroups(trx);
+    let html = '';
+    if (pend.length) {
+      const late = pend.filter(g => g.days >= PEND_DAYS).length;
+      html = `<div class="alert-banner danger"><strong>${pend.length} إذن صرف لسه مستني أمر دفع أو تعهد${late ? ` (منهم ${late} متأخر ${PEND_DAYS} أيام أو أكتر)` : ''}</strong>
+        ${pend.slice(0, 3).map(g => `${g.izn ? 'إذن ' + escHtml(g.izn) : 'بدون إذن'} — ${escHtml(g.tujuan || '-')} — ${escHtml(pendMsg(g))}`).join(' · ')}</div>`;
+    }
+    $('dashAlerts').innerHTML = html;
+  };
+})();
+</script>
+
 </body>
 </html>
