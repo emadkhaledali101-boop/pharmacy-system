@@ -761,7 +761,7 @@
       </div>
       <div class="scroll-x" id="logInTable">
         <table>
-          <thead><tr><th>رقم</th><th>الدوا</th><th>رقم الإذن</th><th>الكمية</th><th>الباتش</th><th>الانتهاء</th><th>المورد</th><th>تاريخ الاستلام</th><th>المستخدم</th><th>ملاحظة</th><th class="noprint">إجراء</th></tr></thead>
+          <thead><tr><th>رقم</th><th>الدوا</th><th>رقم الإذن</th><th>الكمية</th><th>الباتش</th><th>الانتهاء</th><th>المورد</th><th>تاريخ الاستلام</th><th>إذن إضافة</th><th>المستخدم</th><th>ملاحظة</th><th class="noprint">إجراء</th></tr></thead>
           <tbody id="tbodyLogIn"></tbody>
         </table>
       </div>
@@ -784,7 +784,7 @@
       </div>
       <div class="scroll-x" id="logOutTable">
         <table>
-          <thead><tr><th>رقم</th><th>الدوا</th><th>رقم الإذن</th><th>الكمية</th><th>الجهة</th><th>الروشتة</th><th>أمر دفع</th><th>تعهد</th><th>تاريخ الصرف</th><th>المستخدم</th><th>ملاحظة</th><th class="noprint">إجراء</th></tr></thead>
+          <thead><tr><th>رقم</th><th>الدوا</th><th>رقم الإذن</th><th>الكمية</th><th>الجهة</th><th>الروشتة</th><th>أمر دفع</th><th>تعهد</th><th>إذن إضافة</th><th>تاريخ الصرف</th><th>المستخدم</th><th>ملاحظة</th><th class="noprint">إجراء</th></tr></thead>
           <tbody id="tbodyLogOut"></tbody>
         </table>
       </div>
@@ -1576,7 +1576,7 @@ function renderLogIn(trx) {
   $('tbodyLogIn').innerHTML = list.map(t => `
     <tr>
       <td>${escHtml(t.nomor)}</td><td>${escHtml(t.nama)}</td><td>${iznInput(t)}</td><td>${t.jumlah}</td><td>${escHtml(t.batch || '-')}</td>
-      <td>${escHtml(t.exp || '-')}</td><td>${escHtml(t.supplier || '-')}</td><td>${(t.tanggal || '').slice(0, 10)}</td>
+      <td>${escHtml(t.exp || '-')}</td><td>${escHtml(t.supplier || '-')}</td><td>${(t.tanggal || '').slice(0, 10)}</td><td>${stSelect(t, 'izn_idafa')}</td>
       <td>${userCell(t)}</td><td class="wrap">${escHtml(t.note || '-')}</td><td class="noprint">${editBtn(t)}</td>
     </tr>`).join('');
   $('emptyLogIn').style.display = list.length ? 'none' : 'block';
@@ -1588,7 +1588,7 @@ function renderLogOut(trx) {
   $('tbodyLogOut').innerHTML = list.map(t => `
     <tr>
       <td>${escHtml(t.nomor)}</td><td>${escHtml(t.nama)}</td><td>${iznInput(t)}</td><td>${t.jumlah}</td><td>${escHtml(t.tujuan || '-')}</td>
-      <td>${escHtml(t.resep || '-')}</td><td>${stSelect(t, 'amr_dafa')}</td><td>${stSelect(t, 'taahud')}</td><td>${(t.tanggal || '').slice(0, 10)}</td>
+      <td>${escHtml(t.resep || '-')}</td><td>${stSelect(t, 'amr_dafa')}</td><td>${stSelect(t, 'taahud')}</td><td>${stSelect(t, 'izn_idafa')}</td><td>${(t.tanggal || '').slice(0, 10)}</td>
       <td>${userCell(t)}</td><td class="wrap">${escHtml(t.note || '-')}</td><td class="noprint">${editBtn(t)}</td>
     </tr>`).join('');
   $('emptyLogOut').style.display = list.length ? 'none' : 'block';
@@ -2617,6 +2617,8 @@ function enhanceSelect(sel) {
       <div class="row">
         <div><label>رقم الإذن</label><input id="inIzn" placeholder="رقم إذن الإضافة"></div>
         <div><label>المورد</label><input id="inSupplier" placeholder="شركة النيل للأدوية"></div>
+        <div><label>إذن إضافة</label>
+          <select id="inIdafa"><option value="لم يتم" selected>لم يتم</option><option value="تم">تم</option></select></div>
       </div>
       <label>تاريخ الاستلام</label>
       <input id="inTanggal" type="date">
@@ -2651,6 +2653,10 @@ function enhanceSelect(sel) {
         <div>
           <label>تعهد</label>
           <select id="outTaahud"><option value="لم يتم" selected>لم يتم</option><option value="تم">تم</option></select>
+        </div>
+        <div>
+          <label>إذن إضافة</label>
+          <select id="outIdafa"><option value="لم يتم" selected>لم يتم</option><option value="تم">تم</option></select>
         </div>
       </div>
       <label>تاريخ الصرف</label>
@@ -2710,13 +2716,14 @@ function enhanceSelect(sel) {
         await dbPutTrx({
           nomor, tipe: 'وارد', kode: it.o.kode, nama: it.o.nama, jumlah: it.qty,
           batch: it.batch, exp: it.exp, supplier, note,
+          izn_idafa: $('inIdafa').value,
           izn_no: izn || undefined,
           tanggal: fmtDate(pTgl) + 'T' + nowTime(), user_email: CURRENT_USER
         });
         clearCache(); done.push(it);
       }
       rowsOf('in').forEach(r => r.remove());
-      ['inIzn', 'inSupplier', 'inNote'].forEach(id => $(id).value = '');
+      ['inIzn', 'inSupplier', 'inNote'].forEach(id => $(id).value = ''); $('inIdafa').value = 'لم يتم';
       setToday('inTanggal');
       window.addItemRow('in');
       showMsg(M, `تم تسجيل ${done.length} صنف بإذن رقم ${izn || '—'}`, true);
@@ -2765,7 +2772,7 @@ function enhanceSelect(sel) {
     const izn = $('outIzn').value.trim();
     const common = {
       tujuan: $('outTujuan').value.trim(), resep: $('outResep').value.trim(), note: $('outNote').value.trim(),
-      amr_dafa: $('outAmr').value, taahud: $('outTaahud').value
+      amr_dafa: $('outAmr').value, taahud: $('outTaahud').value, izn_idafa: $('outIdafa').value
     };
     btn.disabled = true;
     const done = [];
@@ -2781,7 +2788,7 @@ function enhanceSelect(sel) {
       }
       rowsOf('out').forEach(r => r.remove());
       ['outTujuan', 'outResep', 'outNote', 'outIzn'].forEach(id => $(id).value = '');
-      $('outAmr').value = 'لم يتم'; $('outTaahud').value = 'لم يتم';
+      $('outAmr').value = 'لم يتم'; $('outTaahud').value = 'لم يتم'; $('outIdafa').value = 'لم يتم';
       setToday('outTanggal');
       window.addItemRow('out');
       showMsg(M, `تم تسجيل ${done.length} صنف بإذن رقم ${izn || '—'}`, true);
@@ -2811,6 +2818,8 @@ function enhanceSelect(sel) {
   .izn-meta b { color: var(--ink-2); font-weight: 600; }
   .izn-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
   .izn-card .scroll-x { margin-top: 12px; }
+  .izn-bulk { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; align-items: center; }
+  .izn-bk { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 12.5px; font-weight: 600; color: var(--muted); }
   .btn-row .btn-del { background: linear-gradient(110deg, #ff4d73, #ff8a5c); }
 </style>
 <script>
@@ -2881,7 +2890,7 @@ function enhanceSelect(sel) {
       g.maxId = Math.max(...g.items.map(t => t.id || 0));
       g.qty = g.items.reduce((s, t) => s + (Number(t.jumlah) || 0), 0);
       g.supplier = firstOf(g.items, 'supplier'); g.tujuan = firstOf(g.items, 'tujuan'); g.resep = firstOf(g.items, 'resep');
-      g.amr = uniq(g.items, 'amr_dafa'); g.taa = uniq(g.items, 'taahud');
+      g.amr = uniq(g.items, 'amr_dafa'); g.taa = uniq(g.items, 'taahud'); g.ida = uniq(g.items, 'izn_idafa');
       g.text = norm([g.izn, g.supplier, g.tujuan, g.resep, ...g.items.map(t => t.nama + ' ' + t.nomor + ' ' + (t.batch || ''))].join(' '));
     });
     if (q) { const words = q.split(/\s+/).filter(Boolean); arr = arr.filter(g => words.every(w => g.text.includes(w))); }
@@ -2920,7 +2929,8 @@ function enhanceSelect(sel) {
             <span class="badge ${isIn ? 'in' : 'exit'}">${g.tipe}</span>
             <span class="izn-no">${g.izn ? 'إذن رقم: ' + escHtml(g.izn) : 'بدون رقم إذن'}</span>
             <div class="izn-meta">${meta}</div>
-            ${isIn ? '' : `<div class="izn-badges">${stateBadge('أمر دفع', g.amr)}${stateBadge('تعهد', g.taa)}</div>`}
+            <div class="izn-badges">${isIn ? '' : stateBadge('أمر دفع', g.amr) + stateBadge('تعهد', g.taa)}${stateBadge('إذن إضافة', g.ida)}</div>
+            <div class="izn-bulk noprint">${isIn ? '' : bulkSel(i, 'amr_dafa', 'أمر الدفع', g.amr) + bulkSel(i, 'taahud', 'التعهد', g.taa)}${bulkSel(i, 'izn_idafa', 'إذن الإضافة', g.ida)}</div>
           </div>
           <div class="sum-line" style="margin-top:0"><span class="pill">${g.items.length} صنف</span><span class="pill">إجمالي الكمية: ${g.qty}</span></div>
         </div>
@@ -2934,10 +2944,10 @@ function enhanceSelect(sel) {
 
   window.exportIznExcel = function () {
     if (!_groups.length) { alert('مفيش إذونات للتصدير'); return; }
-    const rows = [['النوع', 'رقم الإذن', 'التاريخ', 'المورد / الجهة', 'الروشتة', 'أمر دفع', 'تعهد', 'رقم الحركة', 'الدوا', 'الكمية', 'الباتش', 'الانتهاء']];
+    const rows = [['النوع', 'رقم الإذن', 'التاريخ', 'المورد / الجهة', 'الروشتة', 'أمر دفع', 'تعهد', 'إذن إضافة', 'رقم الحركة', 'الدوا', 'الكمية', 'الباتش', 'الانتهاء']];
     _groups.forEach(g => g.items.forEach(t => rows.push([
       g.tipe, g.izn, (t.tanggal || '').slice(0, 10), g.tipe === 'وارد' ? (t.supplier || '') : (t.tujuan || ''),
-      t.resep || '', t.amr_dafa || '', t.taahud || '', t.nomor, t.nama, t.jumlah, t.batch || '', t.exp || ''
+      t.resep || '', t.amr_dafa || '', t.taahud || '', t.izn_idafa || '', t.nomor, t.nama, t.jumlah, t.batch || '', t.exp || ''
     ])));
     downloadCSV(`izn-${todayCompact()}.csv`, rows, 'الإذونات');
   };
@@ -2978,6 +2988,34 @@ function enhanceSelect(sel) {
     await doDelete(g.items.map(t => t.id), `حذف ${g.tipe === 'وارد' ? 'إذن الوارد' : 'إذن الصرف'} ${g.izn ? 'رقم ' + g.izn : ''} بالكامل (${g.items.length} صنف)؟\n${list}\nمش هتقدر تتراجع.`);
   };
 
+  /* ─── تعديل حالة الإذن كله دفعة واحدة (أمر دفع / تعهد / إذن إضافة) ─── */
+  function bulkSel(i, f, label, vals) {
+    const cur = vals.length === 1 ? vals[0] : '';
+    const cls = cur === 'تم' ? 's-ok' : cur === 'لم يتم' ? 's-no' : '';
+    return `<label class="izn-bk">${label}
+      <select class="st-sel ${cls}" onchange="bulkSetStatus(${i},'${f}',this)">
+        <option value=""${cur === '' ? ' selected' : ''}>${vals.length > 1 ? 'مختلط' : 'غير محدد'}</option>
+        <option value="لم يتم"${cur === 'لم يتم' ? ' selected' : ''}>لم يتم</option>
+        <option value="تم"${cur === 'تم' ? ' selected' : ''}>تم</option></select></label>`;
+  }
+  window.bulkSetStatus = async function (i, f, sel) {
+    const g = _groups[i], val = sel.value;
+    if (!g || !val) { renderIznScreen(); return; }
+    sel.disabled = true;
+    try {
+      const ids = g.items.map(t => t.id);
+      const { data, error } = await sb.from('transaksi').update({ [f]: val }).in('id', ids).select();
+      if (error) {
+        if (/izn_idafa/i.test(error.message || '')) throw new Error('عمود izn_idafa مش موجود في Supabase — شغّل: alter table transaksi add column if not exists izn_idafa text;');
+        throw error;
+      }
+      if (!data || data.length !== ids.length) throw new Error('التعديل ماتنفذش بالكامل — تأكد إن عندك صلاحية UPDATE على جدول transaksi في Supabase.');
+      clearCache();
+      toast('تم تحديث الإذن كله');
+    } catch (err) { alert('خطأ: ' + err.message); }
+    refreshAll();
+  };
+
   /* نربطها بتحديث الشاشات الأساسي */
   const _prev = refreshAll;
   refreshAll = async function () {
@@ -2987,7 +3025,7 @@ function enhanceSelect(sel) {
 })();
 </script>
 
-<!-- ═══ تنبيهات: أمر الدفع/التعهد من أول يوم ومجمّعة بالإذن + تنبيه الصلاحية البارز في لوحة التحكم ═══ -->
+<!-- ═══ تنبيهات: أمر الدفع / التعهد / إذن الإضافة من أول يوم ومجمّعة بالإذن + تنبيه الصلاحية البارز في لوحة التحكم ═══ -->
 <style>
   /* تنبيه قرب انتهاء الصلاحية — لوحة التحكم */
   .exp-hero { border-radius: 20px; overflow: hidden; margin-bottom: 18px; border: 2px solid #ff4d73; background: var(--surface); box-shadow: 0 10px 40px -14px rgba(255,77,115,.65); }
@@ -3013,35 +3051,78 @@ function enhanceSelect(sel) {
 </style>
 <script>
 (function () {
-  /* ─── 1) أمر الدفع / التعهد: يظهر من أول يوم (والتأخير بيتكتب بعدد الأيام) ─── */
+  const ADD_COL_SQL = 'alter table transaksi add column if not exists izn_idafa text;';
+
+  /* ─── حفظ الحركة: لو عمود izn_idafa لسه مش متضاف في Supabase نسجل من غيره ونبلغ ─── */
+  dbPutTrx = async function (obj) {
+    const { id, ...rest } = obj;
+    if (!rest.user_email && CURRENT_USER) rest.user_email = CURRENT_USER;
+    let { error } = await sb.from('transaksi').insert(rest).select();
+    const optional = {
+      user_email: 'الإيميل ما اتسجلش — ضيف عمود user_email في Supabase (SQL Editor)',
+      amr_dafa: 'أمر الدفع ما اتسجلش — ضيف عمود amr_dafa في Supabase (SQL Editor)',
+      taahud: 'التعهد ما اتسجلش — ضيف عمود taahud في Supabase (SQL Editor)',
+      izn_no: 'رقم الإذن ما اتسجلش — ضيف عمود izn_no في Supabase (SQL Editor)',
+      izn_idafa: 'إذن الإضافة ما اتسجلش — شغّل في Supabase: ' + ADD_COL_SQL
+    };
+    const warns = [];
+    for (let i = 0; i < 6 && error; i++) {
+      const col = Object.keys(optional).find(c => rest[c] !== undefined && new RegExp(c, 'i').test(error.message));
+      if (!col) break;
+      delete rest[col]; warns.push(optional[col]);
+      ({ error } = await sb.from('transaksi').insert(rest).select());
+    }
+    if (!error && warns.length) toast('تنبيه: ' + warns[0]);
+    if (error) throw error;
+  };
+
+  /* رسالة واضحة لو التعديل على عمود izn_idafa وهو مش موجود */
+  const _upd = dbUpdateTrx;
+  dbUpdateTrx = async function (id, fields) {
+    try { return await _upd(id, fields); }
+    catch (e) {
+      if (/izn_idafa/i.test(e && e.message || '')) throw new Error('عمود izn_idafa مش موجود في Supabase — شغّل: ' + ADD_COL_SQL);
+      throw e;
+    }
+  };
+
+  /* ─── 1) التنبيهات: أمر الدفع / التعهد / إذن الإضافة — من أول يوم، وبتختفي لما تبقى "تم" ─── */
   pendingList = function (trx) {
     const now = new Date();
     const todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const res = [];
     trx.forEach(t => {
-      if (t.tipe !== 'صادر') return;
-      const amr = t.amr_dafa === 'لم يتم', taa = t.taahud === 'لم يتم';
-      if (!amr && !taa) return;
+      const isOut = t.tipe === 'صادر';
+      const amr = isOut && t.amr_dafa === 'لم يتم', taa = isOut && t.taahud === 'لم يتم', ida = t.izn_idafa === 'لم يتم';
+      if (!amr && !taa && !ida) return;
       const d = parseToDate((t.tanggal || '').slice(0, 10));
       if (!d) return;
       const days = Math.floor((todayMid - d) / 864e5);
-      if (days >= 0) res.push({ t, days, amr, taa });
+      if (days >= 0) res.push({ t, days, amr, taa, ida });
     });
     return res.sort((a, b) => b.days - a.days);
   };
+  pendLabel = function (x) {
+    const parts = [];
+    if (x.amr) parts.push('أمر الدفع');
+    if (x.taa) parts.push('التعهد');
+    if (x.ida) parts.push('إذن الإضافة');
+    return parts.join(' و');
+  };
 
-  /* تجميع حسب رقم الإذن: إذن فيه 5 أصناف = تنبيه واحد */
+  /* تجميع حسب (النوع + رقم الإذن): إذن فيه 5 أصناف = تنبيه واحد */
   function pendingGroups(trx) {
     const map = new Map();
     pendingList(trx).forEach(x => {
       const izn = (x.t.izn_no || '').trim();
-      const key = izn || '#' + x.t.nomor;
+      const key = x.t.tipe + '|' + (izn || '#' + x.t.nomor);
       let g = map.get(key);
-      if (!g) { g = { izn, items: [], days: 0, amr: false, taa: false, date: '', tujuan: '', resep: '' }; map.set(key, g); }
+      if (!g) { g = { tipe: x.t.tipe, izn, items: [], days: 0, amr: false, taa: false, ida: false, date: '', party: '', resep: '' }; map.set(key, g); }
       g.items.push(x.t);
       g.days = Math.max(g.days, x.days);
-      g.amr = g.amr || x.amr; g.taa = g.taa || x.taa;
-      g.tujuan = g.tujuan || x.t.tujuan || ''; g.resep = g.resep || x.t.resep || '';
+      g.amr = g.amr || x.amr; g.taa = g.taa || x.taa; g.ida = g.ida || x.ida;
+      g.party = g.party || (x.t.tipe === 'وارد' ? x.t.supplier : x.t.tujuan) || '';
+      g.resep = g.resep || x.t.resep || '';
       const d = (x.t.tanggal || '').slice(0, 10); if (!g.date || d < g.date) g.date = d;
     });
     return [...map.values()].sort((a, b) => b.days - a.days);
@@ -3052,29 +3133,31 @@ function enhanceSelect(sel) {
     return n <= 10 ? `منذ ${n} أيام` : `منذ ${n} يوم`;
   }
   function pendMsg(g) {
-    return `لم يتم إحضار ${pendLabel(g)} ` + (g.days === 0 ? '— صُرف اليوم' : agoTxt(g.days));
+    return `لم يتم إحضار ${pendLabel(g)} ` + (g.days === 0 ? '— ' + (g.tipe === 'وارد' ? 'استُلم اليوم' : 'صُرف اليوم') : agoTxt(g.days));
   }
+  const tBadge = g => `<span class="badge ${g.tipe === 'وارد' ? 'in' : 'exit'}" style="margin-inline-end:8px">${g.tipe}</span>`;
 
   renderPendAlerts = function (trx) {
     const el = $('pendAlerts'); if (!el) return;
     const groups = pendingGroups(trx);
-    if (!groups.length) { el.innerHTML = '<div class="empty">مفيش صرف مستني أمر دفع أو تعهد</div>'; return; }
+    if (!groups.length) { el.innerHTML = '<div class="empty">مفيش حاجة مستنية (أمر دفع / تعهد / إذن إضافة)</div>'; return; }
     el.innerHTML = groups.map(g => {
-      const late = g.days >= PEND_DAYS;
+      const isIn = g.tipe === 'وارد';
       return `<div class="alert-banner danger">
-        <strong>${g.izn ? 'إذن رقم ' + escHtml(g.izn) : 'بدون رقم إذن'} — ${escHtml(g.tujuan || '-')}</strong>
-        الروشتة: ${escHtml(g.resep || '-')} · تاريخ الصرف: ${escHtml(g.date)} · ${g.items.length} صنف
+        <strong>${tBadge(g)}${g.izn ? 'إذن رقم ' + escHtml(g.izn) : 'بدون رقم إذن'} — ${escHtml(g.party || '-')}</strong>
+        ${isIn ? '' : 'الروشتة: ' + escHtml(g.resep || '-') + ' · '}${isIn ? 'تاريخ الاستلام' : 'تاريخ الصرف'}: ${escHtml(g.date)} · ${g.items.length} صنف
         <ul style="margin:8px 0 0;padding-inline-start:22px">${g.items.map(t => `<li>${escHtml(t.nama)} × ${t.jumlah}</li>`).join('')}</ul>
         <div style="margin-top:8px">
-          ${g.amr ? `<span class="badge expired" style="margin-inline-end:6px">أمر دفع: لم يتم</span>` : ''}
-          ${g.taa ? `<span class="badge expired" style="margin-inline-end:6px">تعهد: لم يتم</span>` : ''}
+          ${g.amr ? '<span class="badge expired" style="margin-inline-end:6px">أمر دفع: لم يتم</span>' : ''}
+          ${g.taa ? '<span class="badge expired" style="margin-inline-end:6px">تعهد: لم يتم</span>' : ''}
+          ${g.ida ? '<span class="badge expired" style="margin-inline-end:6px">إذن إضافة: لم يتم</span>' : ''}
           <span class="badge out">${escHtml(pendMsg(g))}</span>
         </div>
       </div>`;
     }).join('');
   };
 
-  /* ─── 2) لوحة التحكم: تنبيه الصلاحية البارز + ملخص أمر الدفع/التعهد ─── */
+  /* ─── 2) لوحة التحكم: تنبيه الصلاحية البارز + ملخص التنبيهات المعلّقة ─── */
   const ICON_WARN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>';
   const hero = document.createElement('div');
   hero.id = 'dashExpHero';
@@ -3118,11 +3201,45 @@ function enhanceSelect(sel) {
     const pend = pendingGroups(trx);
     let html = '';
     if (pend.length) {
-      const late = pend.filter(g => g.days >= PEND_DAYS).length;
-      html = `<div class="alert-banner danger"><strong>${pend.length} إذن صرف لسه مستني أمر دفع أو تعهد${late ? ` (منهم ${late} متأخر ${PEND_DAYS} أيام أو أكتر)` : ''}</strong>
-        ${pend.slice(0, 3).map(g => `${g.izn ? 'إذن ' + escHtml(g.izn) : 'بدون إذن'} — ${escHtml(g.tujuan || '-')} — ${escHtml(pendMsg(g))}`).join(' · ')}</div>`;
+      html = `<div class="alert-banner danger"><strong>${pend.length} إذن مستني أمر دفع أو تعهد أو إذن إضافة</strong>
+        ${pend.slice(0, 3).map(g => `${g.tipe} ${g.izn ? 'إذن ' + escHtml(g.izn) : 'بدون إذن'} — ${escHtml(g.party || '-')} — ${escHtml(pendMsg(g))}`).join(' · ')}</div>`;
     }
     $('dashAlerts').innerHTML = html;
+  };
+
+  /* ─── 3) تصدير Excel: إذن الإضافة في سجل الوارد وسجل الصرف وتصدير التنبيهات ─── */
+  exportLogInExcel = async function () {
+    const list = filterLog(await getTrx(), 'وارد', 'logIn');
+    const rows = [['رقم', 'الدوا', 'رقم الإذن', 'الكمية', 'الباتش', 'الانتهاء', 'المورد', 'تاريخ الاستلام', 'إذن إضافة', 'المستخدم', 'ملاحظة']];
+    list.forEach(t => rows.push([t.nomor, t.nama, t.izn_no || '', t.jumlah, t.batch || '', t.exp || '', t.supplier || '', (t.tanggal || '').slice(0, 10), t.izn_idafa || '', t.user_email || '', t.note || '']));
+    downloadCSV(`log-in-${todayCompact()}.csv`, rows, 'سجل الوارد');
+  };
+  exportLogOutExcel = async function () {
+    const list = filterLog(await getTrx(), 'صادر', 'logOut');
+    const rows = [['رقم', 'الدوا', 'رقم الإذن', 'الكمية', 'الجهة', 'الروشتة', 'أمر دفع', 'تعهد', 'إذن إضافة', 'تاريخ الصرف', 'المستخدم', 'ملاحظة']];
+    list.forEach(t => rows.push([t.nomor, t.nama, t.izn_no || '', t.jumlah, t.tujuan || '', t.resep || '', t.amr_dafa || '', t.taahud || '', t.izn_idafa || '', (t.tanggal || '').slice(0, 10), t.user_email || '', t.note || '']));
+    downloadCSV(`log-out-${todayCompact()}.csv`, rows, 'سجل الصرف');
+  };
+  exportAlertsExcel = async function () {
+    try {
+      const obats = await getObats(true), trx = await getTrx(true);
+      const stokMap = computeAllStocks(obats, trx);
+
+      const outRows = [['الكود', 'الاسم', 'الفئة', 'الوحدة', 'الرصيد', 'الحد الأدنى']];
+      obats.forEach(o => { if ((stokMap[o.kode] || 0) === 0) outRows.push([o.kode, o.nama, o.kategori || '', o.unit || '', 0, o.min || 0]); });
+
+      const expRows = [['الكود', 'الاسم', 'الباتش', 'رقم الإذن', 'تاريخ الانتهاء', 'الكمية المتبقية', 'الأيام المتبقية', 'الحالة']];
+      nearExpiryList(trx, 6).forEach(x => expRows.push([x.kode, x.nama, x.batch || '', x.izn || '', x.exp, x.remaining, x.days, x.days < 0 ? 'منتهي' : x.days <= 30 ? 'خلال 30 يوم' : 'خلال 6 شهور']));
+
+      const pendRows = [['النوع', 'رقم', 'الدوا', 'رقم الإذن', 'الكمية', 'الجهة / المورد', 'الروشتة', 'التاريخ', 'الأيام', 'أمر دفع', 'تعهد', 'إذن إضافة']];
+      pendingList(trx).forEach(x => pendRows.push([x.t.tipe, x.t.nomor, x.t.nama, x.t.izn_no || '', x.t.jumlah, (x.t.tipe === 'وارد' ? x.t.supplier : x.t.tujuan) || '', x.t.resep || '', (x.t.tanggal || '').slice(0, 10), x.days, x.t.amr_dafa || '', x.t.taahud || '', x.t.izn_idafa || '']));
+
+      downloadMultiXLSX(`alerts-${todayCompact()}.xlsx`, [
+        { name: 'الأصناف الخالصة', rows: outRows },
+        { name: 'قريبة الانتهاء', rows: expRows },
+        { name: 'أمر دفع وتعهد وإذن إضافة', rows: pendRows }
+      ]);
+    } catch (err) { alert('خطأ في التصدير: ' + err.message); }
   };
 })();
 </script>
